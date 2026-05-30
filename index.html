@@ -1,0 +1,2576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>上古遗音 - 傩戏木雕面具智能交互大展</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- QRCode.js 用于生成二维码 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- MediaPipe 依赖: Hands (手势) & Face Mesh (脸部) 切换至稳定的 jsdelivr 源 -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+    <!-- Three.js 核心及 OBJLoader, MTLLoader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Noto+Serif+SC:wght@300;400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background-color: #050507; 
+            color: #e5c583;
+            overflow: hidden;
+            user-select: none;
+            overscroll-behavior: none; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .accent-text { font-family: 'Cinzel', 'Noto Serif SC', serif; }
+        
+        @keyframes fadeInUp { 
+            0% { opacity: 0; transform: translateY(40px) scale(0.95); } 
+            100% { opacity: 1; transform: translateY(0) scale(1); } 
+        }
+        .animate-fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+        @keyframes revealText { 
+            0% { clip-path: polygon(0 100%, 100% 100%, 100% 100%, 0 100%); opacity: 0; transform: translateY(20px); } 
+            100% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); opacity: 1; transform: translateY(0); } 
+        }
+        .animate-reveal { animation: revealText 1.6s cubic-bezier(0.77, 0, 0.175, 1) both; }
+
+        @keyframes pulseGlow { 
+            0%, 100% { opacity: 0.3; transform: scale(1); filter: blur(60px); } 
+            50% { opacity: 0.6; transform: scale(1.1); filter: blur(80px); } 
+        }
+        .animate-pulse-glow { animation: pulseGlow 8s ease-in-out infinite; }
+
+        @keyframes floatSlow { 
+            0%, 100% { transform: translateY(0); } 
+            50% { transform: translateY(-8px); } 
+        }
+        .animate-float { animation: floatSlow 6s ease-in-out infinite; }
+
+        @keyframes sweepLight {
+            0% { transform: translateX(-150%) skewX(-45deg); opacity: 0; }
+            50% { opacity: 0.5; }
+            100% { transform: translateX(150%) skewX(-45deg); opacity: 0; }
+        }
+        .sweep-light::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 30%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(245, 158, 11, 0.4), transparent);
+            transform: translateX(-150%) skewX(-45deg); animation: sweepLight 3s infinite;
+        }
+
+        .gold-glow { box-shadow: 0 0 15px rgba(229, 197, 131, 0.3); }
+        .gold-glow-hover:hover { box-shadow: 0 0 30px rgba(245, 158, 11, 0.5); border-color: #f59e0b !important; transform: translateY(-5px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        #particle-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: 0.6; mix-blend-mode: screen; }
+
+        #custom-cursor {
+            position: fixed; width: 44px; height: 44px; border-radius: 50%;
+            border: 1.5px solid rgba(245, 158, 11, 0.8); background-color: rgba(245, 158, 11, 0.05);
+            pointer-events: none; z-index: 9999; transform: translate(-50%, -50%);
+            transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1), height 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s, border-color 0.15s;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.4), inset 0 0 10px rgba(245, 158, 11, 0.2);
+            backdrop-filter: blur(2px);
+        }
+        #custom-cursor.fist { 
+            width: 18px; height: 18px; 
+            background-color: rgba(220, 38, 38, 0.9); border-color: #ef4444; 
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.8); 
+            backdrop-filter: none;
+        }
+        @media (max-width: 768px) { #custom-cursor { display: none !important; } }
+
+        #webcam-container { border: 1px solid rgba(245, 158, 11, 0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.8); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #webcam-container:hover { border-color: rgba(245, 158, 11, 0.6); transform: scale(1.08) translateY(-5px); box-shadow: 0 15px 40px rgba(245, 158, 11, 0.2); }
+
+        .mask-3d-image { transform-style: preserve-3d; filter: drop-shadow(0 30px 40px rgba(0,0,0,0.9)); transition: transform 0.1s ease-out; }
+
+        @keyframes bounceShort { 0% { transform: translate(-50%, 20px); opacity: 0; } 100% { transform: translate(-50%, 0); opacity: 1; } }
+        .animate-bounce-short { animation: bounceShort 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        
+        .custom-scroll { overscroll-behavior: contain; } 
+        .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.3); border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(245, 158, 11, 0.6); }
+
+        @keyframes flashAnim { 0% { opacity: 1; } 100% { opacity: 0; } }
+        .flash-effect { animation: flashAnim 0.5s ease-out forwards; }
+
+        .typing-cursor::after { content: '▍'; animation: blink 1s step-start infinite; color: #f59e0b; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        #postcard-qrcode canvas, #postcard-qrcode img { width: 100% !important; height: 100% !important; object-fit: contain; }
+        
+        .fade-transition { transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out; }
+        .fade-out { opacity: 0; transform: scale(0.98); pointer-events: none; }
+        .fade-in { opacity: 1; transform: scale(1); pointer-events: auto; }
+
+        /* 🌟 核心修复：定义独立安全的强制全屏类，防止被 Tailwind 动态漏编导致 Z-index 穿透，同时强制重置盒模型为 block 铺满屏幕 */
+        .fullscreen-webcam {
+            position: fixed !important;
+            display: block !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            max-height: none !important;
+            z-index: 190 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            transform: none !important;
+            box-shadow: none !important;
+            background-color: black !important;
+        }
+    </style>
+</head>
+<body class="relative min-h-screen flex flex-col justify-between">
+
+    <!-- 升级版物理粒子系统容器 -->
+    <canvas id="particle-canvas" class="z-0"></canvas>
+
+    <!-- 贺州文化博物馆 - 电影级主界面 -->
+    <div id="landing-screen" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#050507] transition-all duration-1000 ease-in-out">
+        <div class="absolute top-1/3 left-1/4 w-[60vw] md:w-[40vw] h-[40vh] bg-amber-900/30 rounded-full animate-pulse-glow z-0"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-[50vw] md:w-[30vw] h-[30vh] bg-red-900/20 rounded-full animate-pulse-glow z-0" style="animation-delay: -4s;"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#050507]/80 to-[#050507] z-0"></div>
+
+        <div class="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-4xl">
+            <div id="landing-museum-tag" class="animate-reveal text-amber-500/90 text-[10px] md:text-sm tracking-[0.3em] md:tracking-[0.5em] mb-6 md:mb-8 border border-amber-500/30 px-6 py-2 md:px-8 md:py-2.5 rounded-full bg-black/40 backdrop-blur-md shadow-[0_0_20px_rgba(245,158,11,0.15)] whitespace-nowrap" style="animation-delay: 0.2s;">
+                <i class="fa-solid fa-building-columns mr-2"></i>贺州文化博物馆 · AI 数字化特展
+            </div>
+            
+            <h1 id="landing-main-title" class="animate-reveal text-5xl sm:text-7xl md:text-9xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-amber-50 via-amber-300 to-amber-700 mb-4 md:mb-6 tracking-widest drop-shadow-2xl accent-text" style="animation-delay: 0.5s; text-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);">
+                上古遗音
+            </h1>
+            
+            <h2 id="landing-sub-title" class="animate-reveal text-base sm:text-xl md:text-3xl text-stone-400 font-light tracking-[0.5em] md:tracking-[0.8em] mb-10 md:mb-14 accent-text ml-2 md:ml-4" style="animation-delay: 0.8s;">
+                全息文物 AI 交互特展
+            </h2>
+            
+            <p id="landing-desc" class="animate-reveal max-w-2xl text-[11px] md:text-sm text-stone-500 leading-loose mb-10 md:mb-16 tracking-wider font-light px-4 md:px-0" style="animation-delay: 1.1s;">
+                跨越千年的神秘祭祀，凝固于木石之上的生灵低语。<br><br>
+                结合原生 Gemini AI 与 3D 空间追踪技术，开启一场与远古华夏先民的隔空对话。<br>
+                在无接触的交互中，感受贺州本土傩戏与古老民俗的璀璨神韵。
+            </p>
+
+            <div class="animate-reveal mb-6 md:mb-8 flex items-center justify-center gap-2 md:gap-3 text-amber-400/90 animate-float" style="animation-delay: 1.4s;">
+                <div class="p-2 md:p-3 bg-amber-900/30 rounded-full border border-amber-500/40 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                    <i class="fa-solid fa-hand-sparkles text-sm md:text-xl animate-pulse"></i>
+                </div>
+                <span class="text-[10px] md:text-[13px] font-bold tracking-widest drop-shadow-md">请举起手掌控制光标，对准下方按钮【握拳】进入</span>
+            </div>
+
+            <button id="enter-exhibition-btn" class="animate-reveal relative group cursor-pointer interactive-element overflow-hidden rounded-full scale-90 md:scale-100" style="animation-delay: 1.6s;">
+                <div class="absolute -inset-1 bg-gradient-to-r from-amber-500 to-red-600 rounded-full blur opacity-50 group-hover:opacity-100 transition duration-500"></div>
+                <div class="relative px-8 py-4 md:px-12 md:py-5 bg-stone-950/90 ring-1 ring-amber-500/60 rounded-full leading-none flex items-center gap-3 md:gap-4 backdrop-blur-md sweep-light">
+                    <span class="text-amber-300 font-bold tracking-[0.3em] text-sm md:text-lg">开启时空之门</span>
+                    <i class="fa-solid fa-arrow-right-long text-amber-500 group-hover:translate-x-4 transition-transform duration-500 text-sm md:text-base"></i>
+                </div>
+            </button>
+        </div>
+        <div id="landing-watermark" class="absolute bottom-6 md:bottom-10 text-stone-700 text-[8px] md:text-[9px] tracking-[0.2em] md:tracking-[0.4em] uppercase font-bold text-center w-full px-4">
+            HEZHOU CULTURE MUSEUM DIGITAL EXHIBITION
+        </div>
+    </div>
+
+    <!-- 提示通知容器 -->
+    <div id="toast-container" class="fixed top-16 md:top-24 left-1/2 transform -translate-x-1/2 z-[10000] flex flex-col gap-3 pointer-events-none w-[90%] md:w-auto items-center"></div>
+
+    <!-- 虚拟手势光标 -->
+    <div id="custom-cursor" class="hidden"></div>
+
+    <!-- 顶部导航栏 -->
+    <header class="relative z-10 w-full px-4 md:px-8 py-3 md:py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b border-amber-900/30 bg-black/40 backdrop-blur-xl fade-transition fade-out hidden" id="main-header">
+        <div class="flex items-center space-x-3 md:space-x-5 w-full sm:w-auto">
+            <div class="w-10 h-10 md:w-12 md:h-12 border border-amber-500/50 bg-amber-950/30 rounded-full flex items-center justify-center text-amber-500 animate-spin-slow shadow-[0_0_15px_rgba(245,158,11,0.2)] shrink-0">
+                <i class="fa-solid fa-masks-theater text-base md:text-lg"></i>
+            </div>
+            <div>
+                <h1 id="header-main-title" class="text-lg md:text-2xl font-bold tracking-widest text-amber-100 drop-shadow-md">博物馆智能系统</h1>
+                <p id="header-sub-title" class="text-[8px] md:text-[10px] text-amber-500/80 tracking-[0.1em] md:tracking-[0.2em] font-mono mt-0.5 uppercase hidden sm:block">AI POWERED MUSEUM GESTURE INTERACTION</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-2 md:space-x-4 w-full sm:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+            <button id="open-gallery-btn" class="admin-control hidden shrink-0 interactive-element bg-pink-950/50 hover:bg-pink-900 text-pink-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-pink-500/30 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2">
+                <i class="fa-solid fa-camera-retro"></i><span class="hidden md:inline">游客图库</span>
+            </button>
+            <button id="open-config-btn" class="admin-control hidden shrink-0 interactive-element bg-purple-950/50 hover:bg-purple-900 text-purple-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-purple-500/30 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2">
+                <i class="fa-solid fa-gears animate-spin-slow"></i><span class="hidden md:inline">展厅配置</span>
+            </button>
+            <button id="toggle-admin-btn" class="shrink-0 interactive-element bg-stone-900/50 hover:bg-stone-800 text-stone-400 hover:text-amber-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-stone-800 hover:border-amber-700/50 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2">
+                <i class="fa-solid fa-lock text-[10px]" id="admin-icon"></i><span id="admin-text">游客浏览</span>
+            </button>
+            <button id="replay-landing-btn" class="shrink-0 interactive-element bg-indigo-950/50 hover:bg-indigo-900 text-indigo-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-indigo-500/30 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2 group">
+                <i class="fa-solid fa-rotate-left transition-transform duration-500 group-hover:-rotate-180"></i><span class="hidden md:inline">重演主页</span>
+            </button>
+            <button id="toggle-bgm-btn" class="shrink-0 interactive-element bg-stone-900/50 hover:bg-stone-800 text-amber-400 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-amber-900/50 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2">
+                <i class="fa-solid fa-music text-amber-500 animate-pulse text-[10px]"></i><span id="bgm-text" class="hidden md:inline">开启神秘乐声</span>
+            </button>
+
+            <div class="w-px h-4 md:h-6 bg-stone-800 mx-1 md:mx-2 shrink-0"></div>
+
+            <div id="gesture-status" class="shrink-0 flex items-center space-x-1 md:space-x-2 bg-stone-900/50 px-2 py-1.5 md:px-4 md:py-2 rounded-lg border border-stone-800">
+                <span class="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-red-500 animate-pulse" id="status-dot"></span>
+                <span class="text-[9px] md:text-[10px] text-stone-400 font-bold tracking-wider" id="status-text">视觉离线</span>
+            </div>
+            <button id="toggle-camera-btn" class="shrink-0 bg-amber-600 hover:bg-amber-500 text-black px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2 shadow-[0_0_15px_rgba(217,119,6,0.3)]">
+                <i class="fa-solid fa-video"></i><span class="hidden md:inline">开启手势</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主展示区域 -->
+    <main class="relative z-10 flex-1 w-full max-w-[1400px] mx-auto p-2 md:p-8 flex flex-col justify-center overflow-hidden fade-transition fade-out hidden" id="main-content">
+        
+        <!-- 分类主题大厅视窗 -->
+        <div id="category-selection-view" class="hidden w-full h-full flex flex-col pt-4 md:pt-6 pb-2 md:pb-6 overflow-hidden fade-transition">
+            <div class="text-center mb-6 md:mb-10 relative shrink-0">
+                <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-amber-50 tracking-[0.2em] mb-2 md:mb-4 accent-text" style="text-shadow: 0 5px 20px rgba(245, 158, 11, 0.3);">选 择 展 馆 分 区</h2>
+                <p class="text-stone-400 text-[10px] md:text-[13px] tracking-[0.1em] md:tracking-[0.2em] flex items-center justify-center gap-1.5 md:gap-2">
+                    <i class="fa-solid fa-hand-pointer text-amber-500/70"></i> 凌空操控光标：【握拳】进入展区 · 【上下拖拽】翻页
+                </p>
+                <div class="absolute left-1/2 -translate-x-1/2 bottom-[-10px] md:bottom-[-20px] w-32 md:w-48 h-[2px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
+            </div>
+            <!-- 🌟 修复遮挡问题：将 pb-10 改为 pb-32 md:pb-12，为手机端底部留出充足的安全滚动空间 -->
+            <div id="category-cards-container" class="flex-1 min-h-0 max-h-[75vh] md:max-h-[70vh] overflow-y-auto custom-scroll grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8 px-2 md:px-4 content-start p-2 md:p-4 pb-32 md:pb-12">
+                <!-- 分类大卡片由 JS 动态注入 -->
+            </div>
+        </div>
+
+        <!-- 展厅网格视窗 -->
+        <div id="main-gallery" class="hidden w-full h-full flex flex-col fade-transition">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 lg:gap-6 mb-3 md:mb-4 px-2 md:px-0">
+                <div class="flex items-center gap-3 md:gap-5">
+                    <button id="back-to-categories-btn" class="interactive-element group shrink-0 flex items-center gap-2 md:gap-3 bg-stone-900/60 hover:bg-amber-950/50 border border-stone-800 hover:border-amber-500/50 text-stone-300 hover:text-amber-100 px-3 py-1.5 md:px-5 md:py-2.5 rounded-xl shadow-lg transition-all duration-300 backdrop-blur-sm">
+                        <i class="fa-solid fa-arrow-left text-amber-500 group-hover:-translate-x-1 transition-transform text-[10px] md:text-sm"></i>
+                        <span class="font-bold tracking-widest text-[10px] md:text-xs">返回大厅</span>
+                    </button>
+                    
+                    <div class="text-left border-l-2 border-stone-800/80 pl-3 md:pl-5 py-0.5 md:py-1">
+                        <div class="text-[8px] md:text-[10px] uppercase tracking-[0.2em] md:tracking-[0.3em] text-amber-600 font-bold mb-0.5 md:mb-1">当前位置</div>
+                        <h2 class="text-lg md:text-2xl font-bold text-amber-50 flex items-center gap-2 md:gap-3 tracking-widest">
+                            <span id="current-room-name">博物馆全景</span>
+                            <span id="total-count" class="text-[9px] md:text-[11px] font-bold tracking-wider text-amber-400 bg-amber-900/30 px-1.5 py-0.5 md:px-2.5 md:py-0.5 rounded border border-amber-700/50 font-mono">共 0 件</span>
+                        </h2>
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-2 md:gap-3 text-sm mt-1 sm:mt-0">
+                    <button id="batch-cat-btn" class="admin-control hidden bg-blue-950/40 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 px-3 py-1.5 md:px-4 md:py-2 rounded-lg flex items-center gap-1.5 md:gap-2 transition duration-200 font-bold text-[10px] md:text-xs"><i class="fa-solid fa-object-group"></i> <span>批量管理</span></button>
+                    <button id="open-add-modal-btn" class="admin-control hidden bg-emerald-950/40 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 px-3 py-1.5 md:px-4 md:py-2 rounded-lg flex items-center gap-1.5 md:gap-2 transition duration-200 font-bold text-[10px] md:text-xs"><i class="fa-solid fa-cube"></i> <span>新增藏品</span></button>
+                    <button id="open-importer-btn" class="admin-control hidden bg-amber-950/40 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/30 px-3 py-1.5 md:px-4 md:py-2 rounded-lg flex items-center gap-1.5 md:gap-2 transition duration-200 font-bold text-[10px] md:text-xs"><i class="fa-solid fa-cloud-arrow-up"></i> <span>批量导入</span></button>
+                    <div class="flex items-center bg-stone-900/60 px-2 py-1.5 md:px-4 md:py-2 rounded-lg border border-stone-800 admin-control hidden">
+                        <span class="text-stone-400 text-[10px] md:text-xs font-bold mr-1 md:mr-2">强切：</span>
+                        <select id="material-filter" class="bg-transparent text-amber-400 border-none text-[10px] md:text-xs focus:outline-none font-bold tracking-wider cursor-pointer"><option value="all">所有展馆</option></select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 展厅内部的二级分类导航 (移动端横滑) -->
+            <div id="sub-category-nav" class="flex overflow-x-auto flex-nowrap md:flex-wrap no-scrollbar gap-2 md:gap-3 mb-3 md:mb-6 mt-1 md:mt-2 px-2 md:px-1 border-b border-stone-800/50 pb-3 md:pb-4"></div>
+            
+            <!-- 🌟 修复遮挡问题：将 pb-12 改为 pb-32 md:pb-12，同样保护文物列表底部不被浏览器导航栏遮挡 -->
+            <div id="mask-grid" class="flex-1 overflow-y-auto custom-scroll grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6 p-2 md:p-4 pb-32 md:pb-12 max-h-[65vh] border border-stone-800/50 rounded-xl md:rounded-2xl bg-black/20 backdrop-blur-sm shadow-inner relative">
+                <div id="empty-room-hint" class="hidden absolute inset-0 flex flex-col items-center justify-center text-stone-600 gap-2 md:gap-4">
+                    <i class="fa-solid fa-box-open text-3xl md:text-5xl opacity-50"></i>
+                    <p class="tracking-[0.2em] md:tracking-[0.3em] font-bold text-xs md:text-sm">此分区暂无文物布展</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 单个文物详情页 (移动端上下结构自适应滚动，桌面端左右结构) -->
+        <div id="detail-view" class="hidden absolute inset-0 z-30 m-0 md:m-8 flex flex-col md:flex-row bg-stone-950/95 backdrop-blur-2xl rounded-none md:rounded-3xl overflow-y-auto custom-scroll md:overflow-hidden border-none md:border border-amber-900/30 shadow-[0_0_80px_rgba(0,0,0,1)] fade-transition">
+            
+            <div class="fixed md:absolute top-4 left-4 md:top-6 md:left-6 z-50">
+                <button id="back-btn" class="interactive-element group flex items-center space-x-1.5 md:space-x-2 bg-black/50 backdrop-blur-md hover:bg-amber-600 border border-stone-700/80 hover:border-amber-500 text-amber-100 hover:text-black px-4 py-2 md:px-6 md:py-3 rounded-full shadow-2xl transition-all duration-300">
+                    <i class="fa-solid fa-arrow-left text-amber-500 group-hover:text-black group-hover:-translate-x-1 transition-colors transition-transform text-[10px] md:text-sm"></i>
+                    <span class="font-bold tracking-widest text-[10px] md:text-xs">返回展区</span>
+                </button>
+            </div>
+
+            <!-- 左侧 3D 舞台 (移动端在上，高度增至 70vh 以展示巨大文物) -->
+            <div id="interaction-canvas-container" class="relative flex items-center justify-center w-full md:w-[60%] h-[70vh] md:h-full shrink-0 bg-gradient-to-br from-[#050507] via-[#0a0a0c] to-[#1a140d] overflow-hidden cursor-grab active:cursor-grabbing">
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-amber-600/20 rounded-full blur-[60px] md:blur-[100px] pointer-events-none mix-blend-screen"></div>
+                <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-transparent via-black/60 to-[#050507] pointer-events-none"></div>
+                
+                <div class="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-2 md:px-8 md:py-3 rounded-full border border-amber-500/30 text-[9px] md:text-[11px] text-amber-200 flex items-center gap-2 md:gap-3 z-20 shadow-2xl w-max max-w-[90%]">
+                    <i class="fa-solid fa-arrows-up-down-left-right animate-pulse text-amber-500"></i>
+                    <span id="interaction-hint" class="tracking-widest font-bold whitespace-nowrap overflow-hidden text-ellipsis">隔空握拳并拖拽，全方位鉴赏文物细节</span>
+                </div>
+                
+                <div id="three-container" class="absolute inset-0 z-10 w-full h-full hidden pointer-events-none"></div>
+                <img id="detail-mask-img" src="" alt="文物特写" class="mask-3d-image mb-8 md:mb-12 max-w-[85%] md:max-w-[75%] max-h-[85%] md:max-h-[70%] object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,0.9)] md:drop-shadow-[0_40px_50px_rgba(0,0,0,0.9)] z-10 transition-transform duration-300 ease-out">
+            </div>
+
+            <!-- 右侧 详情面板 (移动端在下，高度自适应允许自然向下浏览) -->
+            <div class="relative w-full md:w-[40%] h-auto min-h-[60vh] md:h-full shrink-0 bg-gradient-to-b from-stone-900/90 to-stone-950 border-t md:border-t-0 md:border-l border-amber-900/30 shadow-[-30px_0_60px_rgba(0,0,0,0.6)] flex flex-col z-30">
+                <div class="p-5 md:p-10 flex flex-col h-auto md:h-full md:overflow-y-auto custom-scroll relative">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-600 via-amber-400 to-transparent opacity-80"></div>
+                    <div class="absolute top-0 right-0 w-16 h-16 md:w-24 md:h-24 border-t-2 border-r-2 border-amber-500/20 opacity-60 m-4 md:m-6 pointer-events-none"></div>
+
+                    <div class="flex justify-between items-start mb-4 md:mb-6 mt-2 md:mt-4">
+                        <div class="z-10 flex-1 pr-4">
+                            <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                                <span id="detail-material" class="text-[9px] md:text-[10px] font-bold bg-amber-900/50 text-amber-300 border border-amber-500/30 px-2 py-0.5 md:px-3 md:py-1 rounded uppercase tracking-[0.2em] shadow-inner">展馆</span>
+                                <span class="text-stone-600 text-xs">/</span>
+                                <span id="detail-era" class="text-[10px] md:text-[11px] text-stone-400 tracking-widest font-mono font-bold flex items-center gap-1.5"><i class="fa-regular fa-compass text-amber-700"></i> <span>时代</span></span>
+                            </div>
+                            <h3 id="detail-title" class="text-2xl sm:text-3xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-white via-amber-100 to-amber-500 tracking-wider accent-text drop-shadow-lg leading-tight py-1">藏品名称</h3>
+                        </div>
+                        
+                        <div class="flex flex-col gap-2 z-10 shrink-0">
+                            <input type="file" id="change-texture-input" accept="image/*" class="hidden">
+                            <div class="flex items-center gap-1 bg-black/50 p-1 md:p-1.5 rounded-lg border border-stone-700/60 backdrop-blur-sm shadow-inner">
+                                <button id="change-texture-btn" class="admin-control hidden interactive-element text-cyan-500 hover:text-cyan-300 hover:bg-cyan-950/50 p-2 md:p-2.5 rounded transition tooltip"><i class="fa-solid fa-paintbrush text-xs md:text-sm"></i></button>
+                                <button id="edit-mask-btn" class="admin-control hidden interactive-element text-amber-500 hover:text-amber-300 hover:bg-amber-950/50 p-2 md:p-2.5 rounded transition"><i class="fa-solid fa-pen-to-square text-xs md:text-sm"></i></button>
+                                <button id="delete-mask-btn" class="admin-control hidden interactive-element text-red-500 hover:text-red-300 hover:bg-red-950/50 p-2 md:p-2.5 rounded transition" data-confirm="false"><i class="fa-solid fa-trash-can text-xs md:text-sm"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">
+                        <div class="bg-black/40 p-3 md:p-4 rounded-xl border border-stone-800/50 shadow-inner">
+                            <span class="text-[8px] md:text-[9px] text-stone-500 uppercase tracking-[0.3em] font-bold block mb-1 md:mb-1.5">发源地域</span>
+                            <span id="detail-location" class="text-amber-50 text-[10px] md:text-[12px] font-medium tracking-wide">中国</span>
+                        </div>
+                        <div class="bg-black/40 p-3 md:p-4 rounded-xl border border-stone-800/50 shadow-inner">
+                            <span class="text-[8px] md:text-[9px] text-stone-500 uppercase tracking-[0.3em] font-bold block mb-1 md:mb-1.5">形制规格</span>
+                            <span id="detail-spec" class="text-amber-50 text-[10px] md:text-[12px] font-medium tracking-wide font-mono truncate block">规格</span>
+                        </div>
+                    </div>
+
+                    <div class="w-full h-[1px] bg-gradient-to-r from-amber-900/50 via-stone-800 to-transparent mb-4 md:mb-6 shrink-0"></div>
+
+                    <div class="flex-grow space-y-4 md:space-y-6 z-10 relative">
+                        <div>
+                            <h4 class="text-[10px] md:text-[11px] text-amber-500 font-bold tracking-[0.3em] md:tracking-[0.4em] mb-2 md:mb-3 flex items-center gap-2"><i class="fa-solid fa-book-journal-whills text-amber-700/80"></i> 馆长寄语与源流</h4>
+                            <p id="detail-desc" class="text-[11px] md:text-[13px] text-stone-300 leading-[1.8] md:leading-[2] text-justify tracking-wide font-light">简介内容</p>
+                        </div>
+                        
+                        <!-- ✨ 核心功能升级：Gemini AI 互动专区 ✨ -->
+                        <div class="pt-3 pb-3 md:pt-4 md:pb-4 border-t border-dashed border-stone-800 mt-4 md:mt-6">
+                            <h4 class="text-[10px] md:text-[11px] text-emerald-400 font-bold tracking-[0.2em] md:tracking-[0.3em] mb-3 md:mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-microchip animate-pulse"></i> Gemini AI 时空导览
+                            </h4>
+                            <div class="flex gap-2 md:gap-3 mb-3 md:mb-4">
+                                <button id="ai-story-btn" class="interactive-element flex-1 group bg-stone-900 hover:bg-stone-800 text-amber-400 py-2 px-2 md:py-3 md:px-4 rounded-xl flex items-center justify-center gap-1 md:gap-2 transition-all border border-stone-700 hover:border-amber-500 shadow-lg">
+                                    <i class="fa-solid fa-wand-magic-sparkles text-[10px] md:text-sm group-hover:rotate-12 transition-transform"></i>
+                                    <span class="font-bold tracking-widest text-[10px] md:text-[12px] whitespace-nowrap">请求深度解读</span>
+                                </button>
+                                <button id="ai-tts-btn" class="hidden interactive-element flex-[0.7] group bg-emerald-950/40 hover:bg-emerald-900 text-emerald-400 py-2 px-2 md:py-3 md:px-4 rounded-xl flex items-center justify-center gap-1 md:gap-2 transition-all border border-emerald-800/50 hover:border-emerald-500 shadow-lg">
+                                    <i class="fa-solid fa-headphones text-[10px] md:text-sm"></i>
+                                    <span class="font-bold tracking-widest text-[10px] md:text-[12px] whitespace-nowrap">播放语音</span>
+                                </button>
+                            </div>
+
+                            <div id="ai-story-box" class="hidden p-4 md:p-5 bg-black/60 border border-amber-900/50 rounded-2xl text-[11px] md:text-[12px] text-amber-100/90 max-h-40 md:max-h-48 overflow-y-auto custom-scroll leading-[1.8] md:leading-[2] tracking-wider text-justify shadow-inner mb-4 md:mb-5 relative">
+                                <div class="absolute top-0 left-0 w-1 h-full bg-amber-500 rounded-l-2xl"></div>
+                            </div>
+
+                            <div id="ai-chat-box" class="flex gap-2 md:gap-3 items-center bg-black/40 p-1 md:p-1.5 rounded-xl border border-stone-800">
+                                <div class="pl-2 md:pl-3 text-stone-600"><i class="fa-regular fa-comment-dots text-sm"></i></div>
+                                <input type="text" id="ai-chat-input" class="flex-1 bg-transparent border-none focus:ring-0 px-1 py-1.5 md:px-2 md:py-2 text-[10px] md:text-[12px] text-stone-200 outline-none transition placeholder-stone-600" placeholder="向 AI 提问，如：这是用来做什么的？">
+                                <button id="ai-chat-send" class="interactive-element bg-stone-800 hover:bg-amber-600 text-stone-300 hover:text-black rounded-lg transition flex items-center justify-center w-8 h-8 md:w-10 md:h-10 shadow-md shrink-0">
+                                    <i class="fa-solid fa-paper-plane text-[10px] md:text-sm"></i>
+                                </button>
+                            </div>
+                            <div id="ai-chat-reply" class="hidden mt-2 md:mt-3 p-3 md:p-4 bg-stone-900/80 border-l-2 border-emerald-500 rounded-r-xl text-[10px] md:text-[12px] text-emerald-100/90 italic leading-relaxed shadow-md"></div>
+                        </div>
+
+                    </div>
+                    
+                    <!-- AR 全息试戴按钮 -->
+                    <button id="start-ar-btn" class="mt-4 md:mt-6 interactive-element group relative w-full overflow-hidden rounded-xl md:rounded-2xl bg-stone-950 border border-emerald-600/50 hover:border-emerald-400 transition-all duration-500 shadow-[0_10px_20px_rgba(16,185,129,0.15)] md:shadow-[0_10px_30px_rgba(16,185,129,0.15)] hover:shadow-[0_15px_40px_rgba(16,185,129,0.3)] shrink-0 z-10 transform hover:-translate-y-1">
+                        <div class="absolute inset-0 bg-gradient-to-r from-emerald-900/90 via-emerald-800/40 to-black opacity-80 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <div class="relative px-4 py-3 md:px-6 md:py-5 flex items-center justify-between">
+                            <div class="flex items-center gap-3 md:gap-5">
+                                <div class="w-10 h-10 md:w-14 md:h-14 rounded-full bg-emerald-950 border border-emerald-400/50 flex items-center justify-center text-emerald-400 group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 shadow-[0_0_10px_rgba(16,185,129,0.4)] md:shadow-[0_0_15px_rgba(16,185,129,0.4)] shrink-0">
+                                    <i class="fa-solid fa-face-viewfinder text-xl md:text-2xl"></i>
+                                </div>
+                                <div class="text-left">
+                                    <div class="text-emerald-50 font-bold tracking-[0.1em] md:tracking-[0.2em] text-[12px] md:text-[15px] drop-shadow-md mb-0.5 md:mb-1">开启全息 AR 投射</div>
+                                    <div class="text-[8px] md:text-[10px] text-emerald-400/80 tracking-widest font-mono hidden sm:block">退后正对镜头 · 握拳激活映射</div>
+                                    <div class="text-[8px] text-emerald-400/80 tracking-widest font-mono sm:hidden">正对镜头试戴</div>
+                                </div>
+                            </div>
+                            <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/50 flex items-center justify-center border border-emerald-500/30 group-hover:bg-emerald-500 transition-colors duration-300 shrink-0">
+                                <i class="fa-solid fa-arrow-right text-emerald-500 group-hover:text-black transition-colors text-[10px] md:text-sm"></i>
+                            </div>
+                        </div>
+                    </button>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部控制栏 -->
+    <footer class="relative z-10 w-full px-4 md:px-8 py-2 md:py-3 text-center text-[8px] md:text-[10px] text-stone-600 border-t border-amber-900/20 bg-black/40 flex flex-col md:flex-row justify-between items-center gap-1 md:gap-2 font-mono tracking-widest fade-transition fade-out hidden" id="main-footer">
+        <span id="footer-copyright-text">© 2026 贺州文化博物馆 - AI 交互特展智能系统 v2.0</span>
+        <div class="flex gap-2 md:gap-4 items-center">
+            <span class="flex items-center gap-1.5 md:gap-2"><i class="fa-solid fa-sliders text-amber-700"></i> 感应阈值: <input type="range" id="sensitivity-slider" min="10" max="90" value="45" class="accent-amber-600 bg-stone-800 h-1 w-16 md:w-20 rounded-full outline-none"></span>
+        </div>
+    </footer>
+
+    <!-- 🌟 核心修改点：重新设计纯粹底层的背景视频管线，告别冲突与黑屏 -->
+    <div id="ar-view" class="hidden fixed inset-0 z-[200] flex items-center justify-center overflow-hidden bg-black">
+        
+        <!-- 最纯净的独立底层背景视频流，直接克隆自前置摄像头 -->
+        <video id="ar-bg-video" class="absolute inset-0 w-full h-full object-cover transform scale-x-[-1] z-0" autoplay playsinline muted></video>
+
+        <!-- 玻璃遮罩面具涂画层 -->
+        <canvas id="ar-canvas" class="absolute inset-0 w-full h-full object-cover transform scale-x-[-1] pointer-events-none z-10"></canvas>
+        <div id="ar-three-container" class="absolute inset-0 w-full h-full pointer-events-none transform scale-x-[-1] z-10"></div>
+
+        <!-- 彻底去掉黑底遮罩，仅保留图标 -->
+        <div id="ar-loading-indicator" class="absolute inset-0 flex flex-col items-center justify-center z-20 transition-opacity duration-700 pointer-events-none">
+            <div class="relative w-16 h-16 md:w-24 md:h-24 mb-4 md:mb-6">
+                <div class="absolute inset-0 border-t-2 border-emerald-500 rounded-full animate-spin shadow-lg"></div>
+                <div class="absolute inset-2 border-r-2 border-amber-500 rounded-full animate-spin-slow"></div>
+                <i class="fa-solid fa-cube absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-xl md:text-3xl text-emerald-400 animate-pulse drop-shadow-md"></i>
+            </div>
+            <span class="text-emerald-300 tracking-[0.2em] md:tracking-[0.4em] text-xs md:text-sm font-bold animate-pulse font-mono drop-shadow-md">正在唤醒 AI 骨骼映射网络...</span>
+        </div>
+
+        <div class="absolute top-4 left-4 md:top-8 md:left-8 z-30 flex gap-4">
+            <button id="exit-ar-btn" class="interactive-element bg-red-950/80 backdrop-blur-md hover:bg-red-900 border border-red-700 text-amber-50 px-4 py-2 md:px-6 md:py-3 rounded-full shadow-2xl transition flex items-center gap-2 md:gap-3">
+                <i class="fa-solid fa-power-off text-red-400 text-[10px] md:text-base"></i> <span class="font-bold tracking-widest text-[10px] md:text-xs">终止映射</span>
+            </button>
+        </div>
+        
+        <div class="absolute bottom-28 md:bottom-auto md:top-8 left-1/2 transform -translate-x-1/2 md:translate-x-0 md:left-auto md:right-8 z-30 bg-black/60 md:bg-black/50 backdrop-blur-md px-4 py-3 md:px-6 md:py-4 rounded-xl md:rounded-2xl border border-emerald-500/30 text-emerald-400 text-xs md:text-sm flex items-center gap-3 md:gap-4 shadow-[0_10px_30px_rgba(0,0,0,0.8)] w-[85%] md:w-auto justify-center md:justify-start">
+            <div class="flex items-center gap-2 md:gap-3 bg-stone-900/80 px-2 py-1 md:px-3 md:py-1.5 rounded-lg border border-stone-700 shrink-0 pointer-events-none">
+                <i class="fa-solid fa-hand-pointer text-lg md:text-xl text-stone-400"></i> <i class="fa-solid fa-arrow-right text-stone-600 text-[10px] md:text-xs"></i> <i class="fa-solid fa-camera text-lg md:text-xl text-amber-500 animate-pulse"></i>
+            </div>
+            <div class="flex flex-col pointer-events-none">
+                <span class="font-bold tracking-[0.2em] md:tracking-[0.3em] text-emerald-300 text-[11px] md:text-sm mb-0.5 md:mb-1">快门留影</span>
+                <span class="text-[8px] md:text-[10px] text-stone-400 tracking-wider">直接<span class="text-amber-500 font-bold mx-1">轻触屏幕</span>(或凌空握拳)拍照</span>
+            </div>
+        </div>
+
+        <div class="absolute bottom-6 md:bottom-10 left-1/2 transform -translate-x-1/2 z-30 text-stone-400/50 text-[8px] md:text-[10px] tracking-[0.4em] md:tracking-[0.6em] font-light uppercase pointer-events-none text-center flex flex-col items-center w-full px-4 drop-shadow-md">
+            <div class="w-8 md:w-10 h-[1px] bg-stone-600/50 mb-2 md:mb-3"></div>
+            贺州文化博物馆 · 全息影像系统<br>
+            <span id="ar-mask-name-display" class="text-amber-500/80 font-bold text-base md:text-xl mt-1.5 md:mt-2 block tracking-widest accent-text truncate w-[80%]"></span>
+        </div>
+
+        <div id="ar-flash" class="hidden absolute inset-0 bg-white z-[250] pointer-events-none"></div>
+    </div>
+
+    <!-- AI 留影明信片分享弹窗 -->
+    <div id="postcard-modal" class="hidden fixed inset-0 z-[300] flex items-center justify-center bg-black/95 backdrop-blur-xl p-2 sm:p-4 transition-all duration-500 opacity-0 scale-95 overflow-y-auto">
+        <div class="relative w-full max-w-sm md:max-w-md my-auto bg-stone-900 border border-amber-900/50 rounded-2xl shadow-[0_0_50px_rgba(245,158,11,0.2)] overflow-hidden flex flex-col">
+            
+            <div class="absolute top-3 right-3 md:top-4 md:right-4 z-20">
+                <button id="close-postcard-btn" class="interactive-element w-7 h-7 md:w-8 md:h-8 rounded-full bg-black/60 text-stone-400 hover:text-amber-400 border border-stone-700 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark text-sm md:text-base"></i>
+                </button>
+            </div>
+
+            <!-- 明信片画布容器 -->
+            <div id="postcard-content" class="relative w-full bg-[#0b0c10] pb-4 md:pb-6 flex flex-col">
+                <!-- 1. 顶部：面具与特效背景 -->
+                <div class="relative w-full h-40 md:h-56 flex flex-col items-center justify-center overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-b from-amber-900/40 via-stone-900 to-[#0b0c10]"></div>
+                    <div class="absolute w-40 h-40 md:w-64 md:h-64 bg-amber-600/20 rounded-full blur-3xl"></div>
+                    <img id="postcard-mask-img" src="" class="relative z-10 w-2/3 md:w-3/4 h-[85%] md:h-4/5 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]">
+                </div>
+                
+                <!-- 2. 中部：藏品信息与 AI 解说 -->
+                <div class="px-4 md:px-6 py-2 flex flex-col items-center text-center z-10 -mt-2">
+                    <h3 id="postcard-title" class="text-xl md:text-2xl font-bold text-amber-100 tracking-widest mb-1.5 md:mb-2 accent-text drop-shadow-md">藏品名称</h3>
+                    <p id="postcard-subtitle" class="text-[9px] md:text-[10px] text-amber-500/80 tracking-[0.2em] font-mono mb-3 md:mb-4 border border-amber-500/30 px-2.5 py-0.5 md:px-3 md:py-1 rounded backdrop-blur-sm bg-black/40">材质 · 年代</p>
+                    <p id="postcard-desc" class="text-[10px] md:text-[11px] text-stone-300 leading-relaxed tracking-wider mb-3 md:mb-4 line-clamp-3 md:line-clamp-4 text-justify px-1 md:px-2">
+                        <!-- AI解说词注入 -->
+                    </p>
+                </div>
+
+                <!-- 3. 底部：游客留影与水印防伪 -->
+                <div class="px-4 md:px-6 w-full flex flex-col items-center">
+                    <div class="relative w-full rounded-xl overflow-hidden border border-stone-700 shadow-[0_10px_30px_rgba(0,0,0,0.6)] bg-black">
+                        <!-- 留影照片 -->
+                        <img id="postcard-photo" src="" class="w-full aspect-[4/3] object-cover">
+                        <!-- 渐变蒙版，用于衬托底部文字 -->
+                        <div class="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/80 to-transparent pointer-events-none"></div>
+                        <!-- 博物馆水印 -->
+                        <div class="absolute bottom-2 left-3 md:bottom-3 md:left-4 text-white/90 text-[9px] md:text-[11px] tracking-[0.2em] md:tracking-[0.3em] font-bold drop-shadow-md" style="font-family: 'Cinzel', serif;">
+                            <i class="fa-solid fa-building-columns mr-1"></i> HEZHOU MUSEUM
+                        </div>
+                        <!-- 专属档案二维码 -->
+                        <div class="absolute bottom-2 right-2 md:bottom-3 md:right-3 p-1 bg-white/95 rounded-md shadow-lg">
+                            <div id="postcard-qrcode" class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center"></div>
+                        </div>
+                    </div>
+                    <p class="mt-3 md:mt-5 text-[8px] md:text-[10px] text-stone-500 tracking-[0.1em] md:tracking-[0.2em]">扫码查阅档案 · 留存专属时空印记</p>
+                </div>
+            </div>
+            
+            <div class="p-3 md:p-4 bg-stone-900 border-t border-stone-800 flex gap-3 z-20">
+                <button id="download-postcard-btn" class="interactive-element flex-1 py-2.5 md:py-3.5 bg-amber-600 hover:bg-amber-500 text-black font-bold rounded-xl text-xs md:text-sm transition shadow-[0_5px_20px_rgba(217,119,6,0.3)] flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-download"></i> 一键合成高清海报并存入相册
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 展厅全局配置模态框 -->
+    <div id="config-modal" class="hidden fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 md:p-4">
+        <div class="bg-stone-900 border-2 border-purple-500/50 p-4 md:p-6 rounded-2xl max-w-5xl w-[95%] md:w-full shadow-[0_0_40px_rgba(168,85,247,0.15)] flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center border-b border-purple-900/50 pb-3 md:pb-4 mb-3 md:mb-4 flex-shrink-0">
+                <h3 class="text-base md:text-xl font-bold text-purple-400 flex items-center gap-2 md:gap-3"><i class="fa-solid fa-sliders"></i>馆长中控台：内容与配置管理</h3>
+                <button id="close-config-btn" class="interactive-element text-stone-400 hover:text-white"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
+            </div>
+            
+            <div class="flex flex-col md:flex-row gap-4 md:gap-6 overflow-y-auto custom-scroll pr-1 md:pr-2 flex-grow">
+                <!-- 左列：分类与音频 -->
+                <div class="flex-[1.2] space-y-4 md:space-y-6">
+                    <!-- 分离大分类与二级分类管理 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- 大主题管理 -->
+                        <div>
+                            <div class="bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-2 mb-2">
+                                <i class="fa-solid fa-layer-group"></i> 主题场馆 (如: 面具馆/服装馆)
+                            </div>
+                            <div class="bg-stone-950/50 border border-stone-800 rounded-xl p-3 space-y-3">
+                                <div id="cfg-categories-list" class="flex flex-wrap gap-1.5 text-[10px]"></div>
+                                <div class="flex gap-1.5">
+                                    <input type="text" id="cfg-new-category" class="flex-1 bg-stone-900 border border-emerald-900/50 focus:border-emerald-500 rounded px-2 py-1 text-xs text-stone-200 outline-none transition" placeholder="新场馆名...">
+                                    <button id="cfg-add-category-btn" class="interactive-element bg-emerald-600 hover:bg-emerald-500 text-black font-bold px-3 py-1 rounded text-xs transition">添加</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 二级子类管理 -->
+                        <div>
+                            <div class="bg-blue-950/30 p-2.5 rounded-lg border border-blue-500/30 text-blue-400 text-xs font-bold flex items-center gap-2 mb-2">
+                                <i class="fa-solid fa-tags"></i> 馆内细分库 (如: 有色/无色)
+                            </div>
+                            <div class="bg-stone-950/50 border border-stone-800 rounded-xl p-3 space-y-3">
+                                <div id="cfg-subcategories-list" class="flex flex-wrap gap-1.5 text-[10px]"></div>
+                                <div class="flex gap-1.5">
+                                    <input type="text" id="cfg-new-subcategory" class="flex-1 bg-stone-900 border border-blue-900/50 focus:border-blue-500 rounded px-2 py-1 text-xs text-stone-200 outline-none transition" placeholder="新分类名...">
+                                    <button id="cfg-add-subcategory-btn" class="interactive-element bg-blue-600 hover:bg-blue-500 text-black font-bold px-3 py-1 rounded text-xs transition">添加</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 音频管理 -->
+                    <div>
+                        <div class="bg-amber-950/20 p-2.5 rounded-lg border border-amber-500/20 text-amber-400 text-sm font-bold flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-music"></i> 展厅声音配置
+                        </div>
+                        <div class="bg-stone-950/50 border border-stone-800 rounded-xl p-4 space-y-3">
+                            <div class="flex gap-4 text-xs text-stone-300">
+                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="bgm-type" value="procedural" id="bgm-type-procedural" class="accent-amber-500 w-3 h-3" checked> 原生祭祀音</label>
+                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="bgm-type" value="custom" id="bgm-type-custom" class="accent-emerald-500 w-3 h-3"> 本地上传</label>
+                            </div>
+                            <div id="cfg-procedural-params" class="flex items-center gap-3"><span class="text-xs text-amber-500 whitespace-nowrap">音调频率</span><input type="range" id="cfg-bgm-pitch" min="30" max="150" value="45" class="w-full accent-amber-500 bg-stone-800 h-1"></div>
+                            <div id="cfg-custom-params" class="hidden"><input type="file" id="cfg-custom-audio-upload" accept="audio/*" class="w-full text-xs text-stone-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-emerald-500/20 file:text-emerald-400"></div>
+                            <div class="flex items-center gap-3 pt-2 border-t border-stone-800"><span class="text-xs text-purple-400 whitespace-nowrap">全局音量</span><input type="range" id="cfg-bgm-volume" min="0" max="100" value="40" class="w-full accent-purple-500 bg-stone-800 h-1.5"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 垂直分割 -->
+                <div class="hidden md:block w-px bg-stone-800"></div>
+
+                <!-- 右列：全局文字 -->
+                <div class="flex-1 space-y-4">
+                    <div class="bg-purple-950/20 p-2.5 rounded-lg border border-purple-500/20 text-purple-300 text-sm font-bold flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-font"></i> 全局文字排版设定
+                    </div>
+                    <div class="space-y-3 text-sm bg-stone-950/50 p-4 rounded-xl border border-stone-800">
+                        <div><label class="block text-stone-400 mb-1 text-xs">启动页标签</label><input type="text" id="cfg-landing-tag" class="w-full bg-stone-900 border border-stone-700 rounded px-2 py-1.5 text-stone-200 outline-none"></div>
+                        <div><label class="block text-stone-400 mb-1 text-xs">启动页主标题</label><input type="text" id="cfg-landing-title" class="w-full bg-stone-900 border border-stone-700 rounded px-2 py-1.5 text-amber-400 font-bold outline-none"></div>
+                        <div><label class="block text-stone-400 mb-1 text-xs">启动页副标题</label><input type="text" id="cfg-landing-sub" class="w-full bg-stone-900 border border-stone-700 rounded px-2 py-1.5 text-stone-200 outline-none"></div>
+                        <div><label class="block text-stone-400 mb-1 text-xs">展览寄语 (回车换行)</label><textarea id="cfg-landing-desc" rows="3" class="w-full bg-stone-900 border border-stone-700 rounded px-2 py-1.5 text-stone-300 text-xs custom-scroll outline-none"></textarea></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div><label class="block text-stone-400 mb-1 text-xs">左上角标题</label><input type="text" id="cfg-header-title" class="w-full bg-stone-900 border border-stone-700 rounded px-2 py-1.5 text-stone-200 outline-none"></div>
+                            <div><label class="block text-stone-400 mb-1 text-xs">版权水印</label><input type="text" id="cfg-footer-text" class="w-full bg-stone-900 border border-stone-700 rounded px-2 py-1.5 text-stone-200 outline-none"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center pt-3 md:pt-4 border-t border-purple-900/50 mt-3 md:mt-4 flex-shrink-0">
+                <button id="preview-landing-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-stone-800 text-stone-300 border border-stone-600 rounded-lg text-xs md:text-sm transition"><i class="fa-solid fa-eye text-purple-400"></i> 重演主页</button>
+                <div class="flex gap-2">
+                    <button id="cancel-config-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-stone-800 text-stone-300 rounded-lg text-xs md:text-sm">取消</button>
+                    <button id="save-config-btn" class="interactive-element px-4 md:px-6 py-1.5 md:py-2 bg-purple-600 text-white font-bold rounded-lg text-xs md:text-sm transition">应用配置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游客试戴图库 Modal -->
+    <div id="gallery-modal" class="hidden fixed inset-0 z-[160] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 md:p-4">
+        <div class="bg-stone-900 border-2 border-pink-500/50 p-4 md:p-6 rounded-2xl max-w-5xl w-[95%] md:w-full shadow-[0_0_40px_rgba(236,72,153,0.2)] flex flex-col h-[80vh]">
+            <div class="flex justify-between items-center border-b border-pink-900/50 pb-3 md:pb-4 mb-3 md:mb-4 flex-shrink-0">
+                <h3 class="text-lg md:text-2xl font-bold text-pink-400 flex items-center gap-2 md:gap-3"><i class="fa-solid fa-images"></i>留影集</h3>
+                <div class="flex items-center gap-2 md:gap-4">
+                    <span class="text-stone-400 text-[10px] md:text-sm hidden sm:inline">已存留影：<span id="gallery-photo-count" class="text-pink-400 font-bold font-mono text-base md:text-lg">0</span></span>
+                    <button id="clear-gallery-btn" class="interactive-element text-[10px] md:text-xs bg-red-950 text-red-400 px-2 md:px-3 py-1 md:py-1.5 rounded border border-red-800 transition hover:bg-red-900"><i class="fa-solid fa-trash-can"></i> 清空</button>
+                    <button id="close-gallery-btn" class="interactive-element text-stone-400 hover:text-white ml-1 md:ml-2"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
+                </div>
+            </div>
+            
+            <div id="gallery-grid" class="flex-1 overflow-y-auto custom-scroll grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 p-1 md:p-2">
+                <!-- 照片卡片由 JS 注入 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量分类底部悬浮操作台 -->
+    <div id="batch-action-bar" class="hidden fixed bottom-4 md:bottom-6 left-1/2 transform -translate-x-1/2 z-[55] bg-stone-900/95 backdrop-blur-md border-2 border-blue-500 p-3 md:p-4 rounded-xl md:rounded-2xl shadow-2xl flex flex-col md:flex-row items-center gap-3 md:gap-4 animate-bounce-short w-[95%] md:w-auto">
+        <span class="text-stone-300 text-xs md:text-sm flex items-center gap-1.5 md:gap-2">
+            <i class="fa-solid fa-layer-group text-blue-400"></i>
+            已选: <span id="batch-count" class="text-blue-400 font-bold font-mono text-base md:text-lg">0</span> 件
+        </span>
+        <div class="hidden md:block w-px h-6 bg-stone-700"></div>
+        <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+            <div class="flex items-center gap-2 w-full md:w-auto justify-between">
+                <span class="text-[10px] md:text-xs text-stone-400 w-12 shrink-0">移至场馆:</span>
+                <input type="text" id="batch-category-input" list="dynamic-categories" class="bg-stone-950 border border-blue-900/50 rounded px-2 py-1.5 md:py-1 text-stone-200 text-[10px] md:text-xs focus:outline-none focus:border-blue-400 w-full md:w-32" placeholder="输入大馆 (不填不改)">
+            </div>
+            <div class="flex items-center gap-2 w-full md:w-auto justify-between">
+                <span class="text-[10px] md:text-xs text-stone-400 w-12 shrink-0">归入细分:</span>
+                <input type="text" id="batch-subcategory-input" list="dynamic-subcategories" class="bg-stone-950 border border-cyan-900/50 rounded px-2 py-1.5 md:py-1 text-stone-200 text-[10px] md:text-xs focus:outline-none focus:border-cyan-400 w-full md:w-32" placeholder="输入分类 (不填不改)">
+            </div>
+        </div>
+        <div class="flex gap-2 w-full md:w-auto">
+            <button id="batch-confirm-btn" class="interactive-element flex-1 md:flex-none bg-blue-500 hover:bg-blue-600 text-black px-4 py-2 md:px-5 md:py-3 rounded-lg text-xs md:text-sm font-bold transition shadow-md whitespace-nowrap md:h-full">应用更改</button>
+            <button id="batch-cancel-btn" class="interactive-element flex-[0.5] md:flex-none bg-stone-800 hover:bg-stone-700 text-stone-300 px-3 py-2 md:px-4 md:py-3 rounded-lg text-xs md:text-sm transition border border-stone-700 md:h-full">退出</button>
+        </div>
+    </div>
+
+    <!-- 批量图片导入管理器弹窗 -->
+    <div id="importer-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 md:p-4">
+        <div class="bg-stone-900 border-2 border-amber-500/50 p-4 md:p-6 rounded-2xl max-w-2xl w-[95%] md:w-full shadow-2xl space-y-3 md:space-y-4 text-left">
+            <div class="flex justify-between items-center border-b border-amber-900/40 pb-2 md:pb-3">
+                <h3 class="text-base md:text-xl font-bold text-amber-400 flex items-center gap-2"><i class="fa-solid fa-images"></i><span>馆藏珍宝 - 隔离式图像智配引擎</span></h3>
+                <button id="close-importer-btn" class="interactive-element text-stone-400 hover:text-white"><i class="fa-solid fa-xmark text-lg md:text-xl"></i></button>
+            </div>
+            
+            <p class="text-[10px] md:text-xs text-amber-200/80 leading-relaxed bg-amber-950/30 p-2.5 md:p-3 rounded-lg border border-amber-900/20">
+                <strong>💡 操作指引：</strong>当前引擎已开启<span class="text-emerald-400 font-bold">场馆隔离与无界扩充</span>。系统会按文件名数字(1.jpg, 2.jpg)仅覆盖当前展馆展品；<strong>超出数量将自动在当前馆创建。</strong>
+                <br>
+                <span class="inline-block mt-1 bg-black/50 px-2 py-1 rounded border border-amber-900/50">
+                    当前目标位：<span id="import-target-hall-name" class="text-emerald-400 font-bold tracking-widest">加载中...</span>
+                </span>
+            </p>
+
+            <div id="drop-zone" class="interactive-element border-2 border-dashed border-amber-500/30 hover:border-amber-500 rounded-xl p-6 md:p-8 flex flex-col items-center justify-center gap-2 md:gap-3 bg-stone-950/40 cursor-pointer transition">
+                <i class="fa-solid fa-cloud-arrow-up text-3xl md:text-4xl text-amber-500 animate-bounce"></i>
+                <div class="text-center">
+                    <span class="text-xs md:text-sm font-semibold text-stone-200 block">点击此处 或 拖拽图片至此区域</span>
+                    <span class="text-[9px] md:text-[11px] text-stone-500 mt-1 block">支持 JPG/PNG，<strong class="text-emerald-400">可一次上传上百张自动扩充</strong></span>
+                </div>
+                <input type="file" id="bulk-image-input" multiple accept="image/*" class="hidden">
+            </div>
+
+            <div class="flex justify-between items-center text-[10px] md:text-xs text-stone-400">
+                <div>本次解析图片: <span id="custom-img-count" class="text-amber-400 font-mono font-bold">0</span> 件 <span class="text-[8px] md:text-[10px] text-stone-500">(超出将自动创建)</span></div>
+                <button id="clear-custom-images-btn" class="interactive-element text-red-400 hover:text-red-300 transition flex items-center gap-1">
+                    <i class="fa-solid fa-trash-can"></i><span>清空缓存</span>
+                </button>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2 border-t border-amber-900/40">
+                <button id="close-importer-ok" class="interactive-element px-4 md:px-6 py-1.5 md:py-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-lg text-xs md:text-sm transition shadow-md">确认应用并导入</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文物快速编辑器弹窗 -->
+    <div id="editor-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-2 md:p-4">
+        <div class="bg-stone-900 border-2 border-amber-500/50 p-4 md:p-6 rounded-2xl max-w-md w-[95%] md:w-full shadow-2xl space-y-3 md:space-y-4 text-left">
+            <div class="flex justify-between items-center border-b border-amber-900/40 pb-2">
+                <h3 class="text-base md:text-xl font-bold text-amber-400 flex items-center gap-2"><i class="fa-solid fa-sliders"></i><span>编辑文物参数</span></h3>
+            </div>
+            <div class="space-y-2 md:space-y-3 text-xs md:text-sm">
+                <div><label class="block text-stone-400 mb-1">藏品名称</label><input type="text" id="edit-name" class="w-full bg-stone-950 border border-amber-900/50 rounded px-2 md:px-3 py-1.5 md:py-2 text-stone-200 outline-none"></div>
+                <!-- 馆内分类编辑 -->
+                <div>
+                    <label class="block text-blue-400 mb-1">所属馆内细分 (如: 有色面具)</label>
+                    <input type="text" id="edit-subcategory" list="dynamic-subcategories" class="w-full bg-stone-950 border border-blue-900/50 rounded px-2 md:px-3 py-1.5 md:py-2 text-stone-200 outline-none" placeholder="选择或输入馆内分类">
+                </div>
+                <div><label class="block text-stone-400 mb-1">年代背景</label><input type="text" id="edit-era" class="w-full bg-stone-950 border border-amber-900/50 rounded px-2 md:px-3 py-1.5 md:py-2 text-stone-200 outline-none"></div>
+                <div><label class="block text-stone-400 mb-1">详细描述</label><textarea id="edit-desc" rows="3" class="w-full bg-stone-950 border border-amber-900/50 rounded px-2 md:px-3 py-1.5 md:py-2 text-stone-200 outline-none"></textarea></div>
+            </div>
+            <div class="flex justify-end gap-2 md:gap-3 pt-2">
+                <button id="cancel-edit" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-stone-800 text-stone-300 rounded text-xs md:text-sm">取消</button>
+                <button id="save-edit" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-amber-500 text-black rounded font-bold text-xs md:text-sm">应用并保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 单件文物 & 3D 模型导入弹窗 -->
+    <div id="add-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-2 md:p-4">
+        <div class="bg-stone-900 border-2 border-emerald-500/50 p-4 md:p-6 rounded-2xl max-w-lg w-[95%] md:w-full shadow-2xl space-y-3 md:space-y-4 text-left overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center border-b border-emerald-900/40 pb-2 md:pb-3 shrink-0">
+                <h3 class="text-base md:text-xl font-bold text-emerald-400 flex items-center gap-2">
+                    <i class="fa-solid fa-cube"></i><span>新增藏品 (OBJ + MTL)</span>
+                </h3>
+            </div>
+            <div class="space-y-3 text-xs md:text-sm flex-grow">
+                <div><label class="block text-stone-400 mb-1">藏品名称</label><input type="text" id="add-name" class="w-full bg-stone-950 border border-emerald-900/50 rounded px-2 md:px-3 py-1.5 md:py-2 text-stone-200 outline-none"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                        <label class="block text-emerald-400 mb-1">归属大展馆</label>
+                        <input type="text" id="add-category" list="dynamic-categories" class="w-full bg-stone-950 border border-emerald-900/50 rounded px-2 md:px-2 py-1.5 md:py-2 text-stone-200 outline-none" placeholder="选择或输入场馆">
+                        <datalist id="dynamic-categories"></datalist>
+                    </div>
+                    <div>
+                        <label class="block text-blue-400 mb-1">馆内分类</label>
+                        <input type="text" id="add-subcategory" list="dynamic-subcategories" class="w-full bg-stone-950 border border-blue-900/50 rounded px-2 md:px-2 py-1.5 md:py-2 text-stone-200 outline-none" placeholder="选择或输入分类">
+                        <datalist id="dynamic-subcategories"></datalist>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div><label class="block text-amber-400 mb-1"><i class="fa-regular fa-image"></i> 封面图片 (必选)</label><input type="file" id="add-image" accept="image/*" class="w-full text-[10px] md:text-xs text-stone-400 file:bg-amber-500/20 file:text-amber-400 border border-stone-800 p-1"></div>
+                    <div><label class="block text-emerald-400 mb-1"><i class="fa-solid fa-cube"></i> OBJ 3D 模型</label><input type="file" id="add-obj" accept=".obj" class="w-full text-[10px] md:text-xs text-stone-400 file:bg-emerald-500/20 file:text-emerald-400 border border-stone-800 p-1"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <div><label class="block text-purple-400 mb-1"><i class="fa-solid fa-file-lines"></i> MTL 材质</label><input type="file" id="add-mtl" accept=".mtl" class="w-full text-[10px] md:text-xs text-stone-400 file:bg-purple-500/20 file:text-purple-400 border border-stone-800 p-1"></div>
+                    <div><label class="block text-cyan-400 mb-1"><i class="fa-solid fa-paintbrush"></i> 表面贴图</label><input type="file" id="add-texture" accept="image/*" class="w-full text-[10px] md:text-xs text-stone-400 file:bg-cyan-500/20 file:text-cyan-400 border border-stone-800 p-1"></div>
+                </div>
+                <p class="text-[9px] md:text-[10px] text-stone-500 mt-1">注: 浏览器无法读取 MTL 中的本地图片路径。若有贴图，请直接在右侧上传贴图强制覆盖。</p>
+                
+                <div><label class="block text-stone-400 mb-1">详细描述</label><textarea id="add-desc" rows="2" class="w-full bg-stone-950 border border-emerald-900/50 rounded px-2 md:px-3 py-1.5 md:py-2 text-stone-200 outline-none"></textarea></div>
+            </div>
+            <div class="flex justify-end gap-2 md:gap-3 pt-2 border-t border-emerald-900/40 mt-2 shrink-0">
+                <button id="cancel-add" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-stone-800 text-stone-300 rounded text-xs md:text-sm">取消</button>
+                <button id="save-add-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-emerald-500 text-black font-bold rounded text-xs md:text-sm">应用并入库</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 馆长权限密码验证弹窗 -->
+    <div id="auth-modal" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 md:p-4">
+        <div class="bg-stone-900 border-2 border-emerald-500/50 p-5 md:p-6 rounded-2xl w-[260px] md:w-[300px] text-center shadow-2xl">
+            <i class="fa-solid fa-shield-halved text-3xl md:text-4xl text-emerald-400 mb-2"></i>
+            <h3 class="text-lg md:text-xl font-bold text-amber-100 mb-2">馆长认证 (admin)</h3>
+            <input type="password" id="admin-pwd-input" class="w-full bg-stone-950 border border-emerald-900/50 rounded p-1.5 md:p-2 text-center text-emerald-400 mb-3 tracking-widest outline-none text-sm md:text-base">
+            <div class="flex justify-center gap-2">
+                <button id="cancel-auth-btn" class="px-3 py-1 md:px-4 md:py-1.5 bg-stone-800 text-stone-300 rounded transition hover:bg-stone-700 text-xs md:text-sm">取消</button>
+                <button id="confirm-auth-btn" class="px-3 py-1 md:px-4 md:py-1.5 bg-emerald-500 text-black font-bold rounded shadow-md hover:bg-emerald-600 transition text-xs md:text-sm">验证</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 悬浮窗：摄像头与手势监视器 -->
+    <div id="webcam-container" class="fixed bottom-20 right-4 sm:bottom-12 sm:right-4 z-40 w-28 h-20 sm:w-44 sm:h-32 bg-black rounded-lg overflow-hidden flex flex-col items-center justify-center">
+        <video id="webcam" class="w-full h-full object-cover transform scale-x-[-1]" autoplay playsinline muted></video>
+        <canvas id="webcam-overlay" class="absolute inset-0 w-full h-full transform scale-x-[-1] pointer-events-none"></canvas>
+        <div id="cam-active-badge" class="absolute bottom-1 left-1 md:left-2 bg-black/70 px-1 py-0.5 md:px-1.5 md:py-0.5 rounded text-[8px] md:text-[9px] text-amber-400 flex items-center gap-1">
+            <span class="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-emerald-500" id="cam-active-dot"></span><span class="hidden sm:inline">AI 追踪画面</span>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- 🤖 看门狗机制变量 (Watchdog Variables) ---
+            let globalIdleTimer = null;
+            let landingAnimTimer = null;
+            let isAtLandingPage = true;
+            let lastInteractionTime = Date.now();
+            let arSessionId = 0; // 🌟 核心防加载穿透锁
+            let arStartTime = 0; // 🌟 Ghost Click 防护锁时间戳
+
+            // --- 核心全局变量声明 ---
+            const apiKey = ""; // 🌟 Gemini API Key, 由运行环境自动注入
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'museum-gesture-mask';
+            
+            window.appCategories = ['古代面具馆', '古代服饰馆', '古代家具馆', '寿字文化馆'];
+            window.appSubCategories = [
+                '有色面具', '无色面具', '祭祀傩面', 
+                '祭司长袍', '平民麻衣', '贵族丝绸', 
+                '紫檀木椅', '黄花梨案', '阴沉木榻', 
+                '百寿图屏', '寿字木雕', '金箔寿字'
+            ];
+
+            const hallMap = {
+                '古代面具馆': ['有色面具', '无色面具', '祭祀傩面'],
+                '古代服饰馆': ['祭司长袍', '平民麻衣', '贵族丝绸'],
+                '古代家具馆': ['紫檀木椅', '黄花梨案', '阴沉木榻'],
+                '寿字文化馆': ['百寿图屏', '寿字木雕', '金箔寿字']
+            };
+            
+            const fallbackSVG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="260"><rect width="200" height="260" fill="#111" stroke="#333" stroke-width="2"/><text x="100" y="130" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" alignment-baseline="middle">馆藏暂无影像</text></svg>');
+
+            let masksData = [];
+            let activeMaskIndex = null; 
+            let currentSubCategoryFilter = 'all'; 
+
+            let cameraActive = false;
+            let isFistAction = false; 
+            
+            let isAdminMode = false; 
+            let isBatchSelectMode = false; 
+            let selectedMaskIndices = [];
+            
+            let isDraggingScroll = false;
+            let dragStartCursorY = 0; let dragStartCursorX = 0; let dragStartScrollY = 0;
+            let cursorX = window.innerWidth / 2; let cursorY = window.innerHeight / 2;
+            let targetCursorX = window.innerWidth / 2; let targetCursorY = window.innerHeight / 2;
+            
+            let tempImportMap = {}; 
+            let currentHoveredElement = null; 
+            let possibleClickElement = null; 
+            let handPrevX = null; let handPrevY = null; 
+            let lastWristRaw = null; // 🌟 新增：记录上一帧原生手腕坐标，用于拦截焦点跳跃
+            let targetRotationX = 0; let targetRotationY = 0;
+            let currentRotationX = 0; let currentRotationY = 0;
+            let currentFloatY = 0;
+
+            let isARMode = false;
+            let faceMesh;
+            let arMaskImage = new Image(); 
+            let capturedPhotos = []; 
+            let arShutterState = 0; 
+            let latestFaceLandmarks = null; 
+            
+            let currentAiStoryText = ""; 
+            let currentAiAudio = null; 
+            let qrcodeInstance = null;
+
+            // DOM 元素 (通用)
+            const videoElement = document.getElementById('webcam');
+            const overlayCanvas = document.getElementById('webcam-overlay');
+            const overlayCtx = overlayCanvas.getContext('2d');
+            const cursorEl = document.getElementById('custom-cursor');
+            const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+            
+            const arView = document.getElementById('ar-view');
+            const arCanvas = document.getElementById('ar-canvas');
+            const arCtx = arCanvas.getContext('2d');
+            const detailView = document.getElementById('detail-view');
+            const arLoadingIndicator = document.getElementById('ar-loading-indicator');
+            const container3d = document.getElementById('interaction-canvas-container');
+
+            // --- 🤖 无人值守看门狗机制 (Idle Watchdog) 终极修复版 ---
+            function forceReturnToLanding() {
+                if (isAtLandingPage) return;
+                
+                console.log("执行看门狗：一键还原展厅环境");
+                isAtLandingPage = true;
+                activeMaskIndex = null;
+                
+                arSessionId++; // 🌟 拦截所有正在异步加载的 3D 模型
+                
+                // 1. 隐藏所有业务模块弹窗
+                document.getElementById('detail-view').classList.add('hidden');
+                document.getElementById('main-gallery').classList.add('hidden');
+                document.getElementById('category-selection-view').classList.add('hidden');
+                document.getElementById('postcard-modal').classList.add('hidden');
+                document.getElementById('config-modal').classList.add('hidden');
+                document.getElementById('gallery-modal').classList.add('hidden');
+                document.getElementById('add-modal').classList.add('hidden');
+                document.getElementById('editor-modal').classList.add('hidden');
+                
+                // 2. 清理 AR 与 3D 渲染器
+                if (isARMode) {
+                    isARMode = false;
+                    document.getElementById('ar-view').classList.add('hidden');
+                    document.getElementById('ar-loading-indicator').classList.remove('opacity-0'); // 重置提示
+                    
+                    if (typeof arCurrentModel !== 'undefined' && arCurrentModel) { 
+                        disposeThreeObject(arCurrentModel); 
+                        arScene.remove(arCurrentModel); 
+                        arCurrentModel = null; 
+                    }
+                    if(typeof arRenderer !== 'undefined' && arRenderer) arRenderer.clear();
+                    if(typeof arCtx !== 'undefined' && arCtx) arCtx.clearRect(0, 0, arCanvas.width, arCanvas.height);
+
+                    // 🌟 隐藏掉全屏背景视频并释放原悬浮窗的隐藏状态
+                    document.getElementById('webcam-container').classList.remove('hidden');
+                    document.getElementById('ar-bg-video').pause();
+                }
+
+                // 3. 清理 AI 语音状态
+                if(window.speechSynthesis) window.speechSynthesis.cancel();
+                if (currentAiAudio) { currentAiAudio.pause(); currentAiAudio = null; }
+                
+                // 🌟 4. 重置主架构容器 (修复白屏问题的关键：统筹 hidden 和 fade-out 的生命周期)
+                document.getElementById('main-header').classList.add('hidden', 'fade-out'); 
+                document.getElementById('main-content').classList.add('hidden', 'fade-out'); 
+                document.getElementById('main-footer').classList.add('hidden', 'fade-out');
+                
+                // 5. 展现入场主页
+                const landingScreen = document.getElementById('landing-screen');
+                landingScreen.classList.remove('hidden');
+                
+                setTimeout(() => { 
+                    landingScreen.classList.remove('opacity-0', 'scale-110', 'pointer-events-none'); 
+                    triggerLandingAnimationLoop(); 
+                }, 50);
+            }
+
+            function triggerLandingAnimationLoop() {
+                if (!isAtLandingPage) return;
+                
+                const revealElements = document.querySelectorAll('.animate-reveal');
+                revealElements.forEach(el => {
+                    el.classList.remove('animate-reveal');
+                    void el.offsetWidth; // 触发重绘
+                    el.classList.add('animate-reveal');
+                });
+                
+                clearTimeout(landingAnimTimer);
+                landingAnimTimer = setTimeout(triggerLandingAnimationLoop, 10000); 
+            }
+
+            function resetActivity() {
+                const now = Date.now();
+                if (now - lastInteractionTime > 500) {
+                    lastInteractionTime = now;
+                    
+                    clearTimeout(globalIdleTimer);
+                    
+                    if (!isAtLandingPage) {
+                        globalIdleTimer = setTimeout(() => {
+                            console.log("看门狗触发: 60秒无交互，自动返回主页。");
+                            forceReturnToLanding();
+                        }, 60000); // 60 秒倒计时
+                    }
+
+                    if (isAtLandingPage) {
+                        clearTimeout(landingAnimTimer);
+                        landingAnimTimer = setTimeout(triggerLandingAnimationLoop, 10000);
+                    }
+                }
+            }
+
+            ['mousemove', 'mousedown', 'keydown', 'touchstart', 'click'].forEach(evt => {
+                document.addEventListener(evt, resetActivity);
+            });
+
+
+            // --- 核心优化: Three.js 深度资源释放 (防内存溢出) ---
+            function disposeThreeObject(obj) {
+                if (!obj) return;
+                obj.traverse((child) => {
+                    if (child.isMesh) {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(m => {
+                                    if (m.map) m.map.dispose();
+                                    m.dispose();
+                                });
+                            } else {
+                                if (child.material.map) child.material.map.dispose();
+                                child.material.dispose();
+                            }
+                        }
+                    }
+                });
+            }
+
+            // --- Gemini API 集成功能 ---
+            async function fetchGeminiWithRetry(url, payload, retries = 5) {
+                const delays = [1000, 2000, 4000, 8000, 16000];
+                for (let i = 0; i < retries; i++) {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        return await response.json();
+                    } catch (e) {
+                        if (i === retries - 1) throw e;
+                        await new Promise(r => setTimeout(r, delays[i]));
+                    }
+                }
+            }
+
+            function typeWriterEffect(element, text, speed = 40) {
+                element.innerHTML = '<span class="typing-cursor"></span>';
+                let i = 0;
+                function type() { if (i < text.length) { element.innerHTML = text.substring(0, i + 1) + '<span class="typing-cursor"></span>'; i++; setTimeout(type, speed); } else element.innerHTML = text; }
+                type();
+            }
+
+            // ✨ 触发：AI 生成深度解读
+            document.getElementById('ai-story-btn').addEventListener('click', async () => {
+                soundSynth.playClick(); 
+                const storyBox = document.getElementById('ai-story-box');
+                const ttsBtn = document.getElementById('ai-tts-btn');
+                
+                storyBox.classList.remove('hidden'); 
+                ttsBtn.classList.add('hidden');
+                storyBox.innerHTML = '<div class="flex items-center gap-2 animate-pulse"><i class="fa-solid fa-spinner fa-spin text-amber-500"></i><span>正在连线 Gemini 引擎查阅古籍...</span></div>';
+                
+                if (activeMaskIndex === null) return;
+                const mask = masksData[activeMaskIndex];
+                
+                const prompt = `你是一位极具文化底蕴的贺州文化博物馆AI馆长。请为这件珍宝写一段优美、深沉的短篇解说词（约150字，适合用作语音导览）。
+                藏品名：${mask.name}
+                所属展馆：${mask.materialType}
+                细分流派：${mask.subCategory}
+                时代：${mask.era}
+                请结合华夏古傩戏文化或古代工艺的背景进行深情解说。直接输出解说内容，不要带有任何寒暄、前缀或Markdown符号。`;
+
+                try {
+                    const payload = {
+                        contents: [{ parts: [{ text: prompt }] }],
+                        systemInstruction: { parts: [{ text: "你是一位专业的博物馆AI馆长和历史学家，知识渊博，用词优美。" }] }
+                    };
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                    const result = await fetchGeminiWithRetry(url, payload);
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    
+                    if (text) {
+                        currentAiStoryText = text.replace(/[\*#]/g, '').trim(); 
+                        typeWriterEffect(storyBox, currentAiStoryText, 30);
+                        ttsBtn.classList.remove('hidden');
+                    } else {
+                        storyBox.innerHTML = 'AI 馆长暂时有些疲惫，请稍后再试。';
+                    }
+                } catch (error) {
+                    console.error("Gemini 文本生成错误:", error);
+                    storyBox.innerHTML = '<span class="text-red-400">跨越时空失败，未能获取 Gemini 响应。</span>';
+                }
+            });
+
+            // ✨ 触发：AI 语音讲解 
+            document.getElementById('ai-tts-btn').addEventListener('click', () => {
+                soundSynth.playClick();
+                if (!currentAiStoryText) return showToast("暂无解说词可播放", "error");
+                
+                const ttsBtn = document.getElementById('ai-tts-btn');
+                
+                if(window.speechSynthesis) window.speechSynthesis.cancel();
+                
+                const utterance = new SpeechSynthesisUtterance(currentAiStoryText);
+                utterance.lang = 'zh-CN';
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                
+                const voices = window.speechSynthesis.getVoices();
+                const zhVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('cmn'));
+                if (zhVoice) utterance.voice = zhVoice;
+                
+                utterance.onstart = () => {
+                    ttsBtn.innerHTML = '<i class="fa-solid fa-volume-high animate-pulse text-[10px] md:text-xs"></i><span class="font-bold tracking-widest text-[10px] md:text-[11px] whitespace-nowrap">✨ 正在为您讲解...</span>';
+                    showToast("▶️ 设备内置语音讲解已开启", "success");
+                };
+                
+                utterance.onend = () => { ttsBtn.innerHTML = '<i class="fa-solid fa-headphones text-[10px] md:text-sm"></i><span class="font-bold tracking-widest text-[10px] md:text-[12px] whitespace-nowrap">重新播放</span>'; };
+                utterance.onerror = (e) => {
+                    console.error("原生语音播放错误:", e);
+                    ttsBtn.innerHTML = '<i class="fa-solid fa-headphones text-[10px] md:text-sm"></i><span class="font-bold tracking-widest text-[10px] md:text-[12px] whitespace-nowrap">播放错误</span>';
+                    showToast("语音播放中断或出错", "error");
+                };
+                
+                window.speechSynthesis.speak(utterance);
+            });
+
+            if(window.speechSynthesis) { window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); }; }
+
+            // ✨ 触发：AI 聊天互动
+            const chatSendBtn = document.getElementById('ai-chat-send');
+            const chatInput = document.getElementById('ai-chat-input');
+            
+            chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') chatSendBtn.click(); });
+
+            chatSendBtn.addEventListener('click', async () => {
+                const question = chatInput.value.trim();
+                if (!question || activeMaskIndex === null) return;
+                
+                soundSynth.playClick();
+                const replyBox = document.getElementById('ai-chat-reply');
+                replyBox.classList.remove('hidden');
+                replyBox.innerHTML = '<span class="animate-pulse flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin text-amber-500"></i> AI 馆长正在思考...</span>';
+                chatInput.value = '';
+
+                const mask = masksData[activeMaskIndex];
+                const prompt = `你是一位学识渊博的贺州文化博物馆馆长。游客正在参观藏品「${mask.name}」（大类：${mask.materialType}，子类：${mask.subCategory}）。
+                游客问你：“${question}”
+                请用亲切、专业、简练的语言（约80字以内）回答游客的问题，直接输出回答内容。`;
+
+                try {
+                    const payload = { contents: [{ parts: [{ text: prompt }] }], systemInstruction: { parts: [{ text: "你是一位热情友好的博物馆AI馆长，乐于解答游客疑惑。" }] } };
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                    const result = await fetchGeminiWithRetry(url, payload);
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) { typeWriterEffect(replyBox, text.replace(/[\*#]/g, ''), 20); } 
+                    else { replyBox.innerHTML = '抱歉，馆长查阅资料时遇到了点小问题。'; }
+                } catch (error) {
+                    console.error("Gemini Chat 错误:", error);
+                    replyBox.innerHTML = '<span class="text-red-400">网络信号不稳定，馆长暂时无法回答。</span>';
+                }
+            });
+
+            // --- Three.js 初始化 ---
+            function initThreeJS() {
+                scene = new THREE.Scene();
+                threeCamera = new THREE.PerspectiveCamera(45, container3d.clientWidth / container3d.clientHeight, 0.1, 1000);
+                threeCamera.position.z = 6;
+                renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+                renderer.setSize(container3d.clientWidth, container3d.clientHeight);
+                renderer.outputEncoding = THREE.sRGBEncoding; 
+                document.getElementById('three-container').appendChild(renderer.domElement);
+                scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+                const dl = new THREE.DirectionalLight(0xffdf80, 0.8); dl.position.set(2, 2, 5); scene.add(dl);
+
+                const arContainer3d = document.getElementById('ar-three-container');
+                arScene = new THREE.Scene();
+                arCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+                arCamera.position.z = 10;
+                arRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true }); 
+                arRenderer.setSize(window.innerWidth, window.innerHeight);
+                arRenderer.outputEncoding = THREE.sRGBEncoding;
+                arContainer3d.appendChild(arRenderer.domElement);
+                arScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+                const arDl = new THREE.DirectionalLight(0xfff0dd, 0.9);
+                arDl.position.set(0, 5, 10);
+                arScene.add(arDl);
+            }
+
+            function load3DModel(objUrl, mtlUrl, textureUrl, callback) {
+                const applyFinalTextureAndFinish = (objectGroup) => {
+                    if (textureUrl) {
+                        new THREE.TextureLoader().load(textureUrl, (texture) => {
+                            texture.encoding = THREE.sRGBEncoding;
+                            objectGroup.traverse((child) => {
+                                if (child.isMesh) { child.material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.5, metalness: 0.1 }); child.material.needsUpdate = true; }
+                            });
+                            callback(objectGroup);
+                        });
+                    } else callback(objectGroup);
+                };
+
+                const handleObject = (object) => {
+                    const box = new THREE.Box3().setFromObject(object);
+                    const center = box.getCenter(new THREE.Vector3());
+                    object.position.sub(center); 
+                    const group = new THREE.Group(); group.add(object);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    group.userData.originalSize = maxDim || 1; 
+                    applyFinalTextureAndFinish(group);
+                };
+
+                if (mtlUrl) {
+                    const mtlLoader = new THREE.MTLLoader();
+                    mtlLoader.load(mtlUrl, (materials) => {
+                        materials.preload();
+                        const objLoader = new THREE.OBJLoader();
+                        objLoader.setMaterials(materials);
+                        objLoader.load(objUrl, handleObject, undefined, () => loadPureOBJ(objUrl, handleObject));
+                    }, undefined, () => loadPureOBJ(objUrl, handleObject));
+                } else loadPureOBJ(objUrl, handleObject);
+            }
+
+            function loadPureOBJ(objUrl, handleObject) {
+                new THREE.OBJLoader().load(objUrl, (object) => {
+                    const material = new THREE.MeshStandardMaterial({ color: 0xe5c583, roughness: 0.7, metalness: 0.3 });
+                    object.traverse((child) => { if (child.isMesh) child.material = material; });
+                    handleObject(object);
+                }, undefined, () => showToast("3D模型文件加载异常", "error"));
+            }
+
+            // --- 🎵 电影级音频与氛围引擎升级 ---
+            const customAudioPlayer = new Audio(); customAudioPlayer.loop = true;
+            let bgmConfig = { mode: 'procedural', volume: 0.5, proceduralPitch: 42.00 }; 
+            class ProceduralBGM {
+                constructor() { this.ctx = null; this.isPlaying = false; this.masterGain = null; }
+                init() { 
+                    if (this.ctx) return; 
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)(); 
+                    this.masterGain = this.ctx.createGain(); 
+                    this.masterGain.gain.setValueAtTime(0, this.ctx.currentTime); 
+                    this.masterGain.connect(this.ctx.destination); 
+                    
+                    this.convolver = this.ctx.createConvolver();
+                    this.createReverb(this.ctx).then(buf => { if(this.convolver && buf) this.convolver.buffer = buf; });
+                    
+                    this.reverbGain = this.ctx.createGain();
+                    this.reverbGain.gain.value = 0.4;
+                    this.masterGain.connect(this.reverbGain);
+                    this.reverbGain.connect(this.convolver);
+                    this.convolver.connect(this.ctx.destination);
+                }
+                
+                async createReverb(audioCtx) {
+                    const length = audioCtx.sampleRate * 2.5; 
+                    const buffer = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
+                    for (let c = 0; c < 2; c++) {
+                        const data = buffer.getChannelData(c);
+                        for (let i = 0; i < length; i++) { data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 3); }
+                    }
+                    return buffer;
+                }
+
+                start() { 
+                    this.init(); 
+                    if (this.ctx.state === 'suspended') this.ctx.resume(); 
+                    if (this.isPlaying) return; 
+                    this.isPlaying = true; 
+                    
+                    this.masterGain.gain.linearRampToValueAtTime(bgmConfig.volume, this.ctx.currentTime + 3);
+
+                    this.droneGain = this.ctx.createGain(); 
+                    this.droneGain.gain.setValueAtTime(0.15, this.ctx.currentTime); 
+                    this.droneGain.connect(this.masterGain); 
+                    
+                    this.droneOsc1 = this.ctx.createOscillator(); 
+                    this.droneOsc1.type = 'sine'; 
+                    this.droneOsc1.frequency.setValueAtTime(bgmConfig.proceduralPitch, this.ctx.currentTime); 
+                    
+                    this.lfo = this.ctx.createOscillator();
+                    this.lfo.type = 'sine'; this.lfo.frequency.value = 0.1; 
+                    this.lfoGain = this.ctx.createGain(); this.lfoGain.gain.value = 5; 
+                    this.lfo.connect(this.lfoGain); this.lfoGain.connect(this.droneOsc1.frequency);
+                    this.lfo.start();
+
+                    this.droneOsc1.connect(this.droneGain); this.droneOsc1.start(); 
+                    this.scheduleBells(); 
+                }
+                
+                scheduleBells() { 
+                    const scale = [196, 220, 261, 293, 329, 392, 440]; 
+                    const triggerNext = () => { 
+                        if (!this.isPlaying) return; 
+                        this.bellTimer = setTimeout(() => { this.playBell(scale[Math.floor(Math.random() * scale.length)]); triggerNext(); }, 5000 + Math.random() * 8000); 
+                    }; 
+                    triggerNext(); 
+                }
+                
+                playBell(freq) { 
+                    if (!this.isPlaying) return; 
+                    const now = this.ctx.currentTime; 
+                    const carrier = this.ctx.createOscillator(); const bellGain = this.ctx.createGain(); 
+                    carrier.type = 'triangle'; carrier.frequency.setValueAtTime(freq, now); 
+                    bellGain.gain.setValueAtTime(0, now); bellGain.gain.linearRampToValueAtTime(0.08, now + 0.5); 
+                    bellGain.gain.exponentialRampToValueAtTime(0.0001, now + 5.0); 
+                    carrier.connect(bellGain); bellGain.connect(this.masterGain); 
+                    carrier.start(now); carrier.stop(now + 6); 
+                }
+                
+                stop() { 
+                    this.isPlaying = false; 
+                    if (this.bellTimer) clearTimeout(this.bellTimer); 
+                    if (this.masterGain) {
+                        this.masterGain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 2); 
+                        setTimeout(() => { try { if (this.droneOsc1) this.droneOsc1.stop(); if (this.lfo) this.lfo.stop(); } catch(e) {} }, 2100);
+                    }
+                }
+                setMasterVolume(val) { if(this.masterGain) this.masterGain.gain.setTargetAtTime(val, this.ctx.currentTime, 0.1); }
+                setPitch(val) { if(this.droneOsc1) this.droneOsc1.frequency.setTargetAtTime(val, this.ctx.currentTime, 0.1); }
+            }
+            const proceduralBGM = new ProceduralBGM();
+            let isMusicPlaying = false;
+            function playGlobalMusic() { 
+                isMusicPlaying = true; 
+                if(bgmConfig.mode === 'procedural') { customAudioPlayer.pause(); proceduralBGM.start(); } else { proceduralBGM.stop(); customAudioPlayer.play().catch(e => showToast("播放需先交互", "info")); } 
+                document.getElementById('bgm-text').innerText = "神秘乐声: 环绕"; document.getElementById('toggle-bgm-btn').classList.replace('bg-stone-900/50', 'bg-amber-950/40'); 
+            }
+            function stopGlobalMusic() { 
+                isMusicPlaying = false; proceduralBGM.stop(); customAudioPlayer.pause(); 
+                document.getElementById('bgm-text').innerText = "神秘乐声: 静音"; document.getElementById('toggle-bgm-btn').classList.replace('bg-amber-950/40', 'bg-stone-900/50'); 
+            }
+            document.getElementById('toggle-bgm-btn').addEventListener('click', () => { soundSynth.playClick(); if (!isMusicPlaying) playGlobalMusic(); else stopGlobalMusic(); });
+
+            function showToast(message, type = 'info') {
+                const container = document.getElementById('toast-container'); const toast = document.createElement('div');
+                toast.className = `px-4 py-3 md:px-6 md:py-4 rounded-xl border shadow-[0_10px_30px_rgba(0,0,0,0.8)] transition duration-500 transform translate-y-4 opacity-0 flex items-center gap-2 md:gap-3 backdrop-blur-xl bg-stone-950/90 text-[11px] md:text-[13px] font-bold tracking-widest ${type === 'error' ? 'border-red-500/50 text-red-300' : type === 'success' ? 'border-emerald-500/50 text-emerald-300' : 'border-amber-500/50 text-amber-300' }`;
+                toast.innerHTML = `<i class="${type === 'error' ? 'fa-solid fa-circle-exclamation text-base md:text-lg' : type === 'success' ? 'fa-solid fa-circle-check text-base md:text-lg' : 'fa-solid fa-wand-magic-sparkles text-base md:text-lg'}"></i><span>${message}</span>`;
+                container.appendChild(toast); setTimeout(() => toast.classList.remove('translate-y-4', 'opacity-0'), 50);
+                setTimeout(() => { toast.classList.add('translate-y-4', 'opacity-0'); setTimeout(() => toast.remove(), 500); }, 3500);
+            }
+
+            class WebAudioSynth {
+                constructor() { this.ctx = null; }
+                init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+                playHover() { try { this.init(); const osc = this.ctx.createOscillator(), gain = this.ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(400, this.ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.1); gain.gain.setValueAtTime(0.02, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1); osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + 0.1); } catch (e) {} }
+                playClick() { try { this.init(); const osc = this.ctx.createOscillator(), gain = this.ctx.createGain(); osc.type = 'triangle'; osc.frequency.setValueAtTime(300, this.ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.2); gain.gain.setValueAtTime(0.1, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2); osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + 0.2); } catch (e) {} }
+                playShutter() { try { this.init(); const osc = this.ctx.createOscillator(), gain = this.ctx.createGain(); osc.type = 'square'; osc.frequency.setValueAtTime(900, this.ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.15); gain.gain.setValueAtTime(0.2, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15); osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + 0.15); } catch (e) {} }
+                
+                playEntrance() { 
+                    try { 
+                        this.init(); 
+                        const now = this.ctx.currentTime; const duration = 4.0;
+                        const masterGain = this.ctx.createGain();
+                        masterGain.gain.setValueAtTime(0, now);
+                        masterGain.gain.linearRampToValueAtTime(0.8, now + 0.5); 
+                        masterGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                        masterGain.connect(this.ctx.destination);
+
+                        const osc1 = this.ctx.createOscillator(); osc1.type = 'square'; 
+                        osc1.frequency.setValueAtTime(60, now); osc1.frequency.exponentialRampToValueAtTime(20, now + duration); 
+                        
+                        const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass';
+                        filter.frequency.setValueAtTime(400, now); filter.frequency.exponentialRampToValueAtTime(50, now + duration);
+                        osc1.connect(filter); filter.connect(masterGain); osc1.start(now); osc1.stop(now + duration); 
+                        
+                        const osc2 = this.ctx.createOscillator(); osc2.type = 'sawtooth';
+                        osc2.frequency.setValueAtTime(150, now); osc2.frequency.exponentialRampToValueAtTime(80, now + duration);
+                        const gain2 = this.ctx.createGain(); gain2.gain.setValueAtTime(0, now); gain2.gain.linearRampToValueAtTime(0.15, now + 1); gain2.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                        osc2.connect(gain2); gain2.connect(masterGain); osc2.start(now); osc2.stop(now + duration);
+                    } catch (e) {} 
+                }
+            }
+            const soundSynth = new WebAudioSynth();
+            window.addEventListener('click', () => { if(soundSynth.ctx && soundSynth.ctx.state==='suspended') soundSynth.ctx.resume(); if(proceduralBGM.ctx && proceduralBGM.ctx.state==='suspended') proceduralBGM.ctx.resume(); });
+
+            // --- 粒子系统 ---
+            const particleCanvas = document.getElementById('particle-canvas'), partCtx = particleCanvas.getContext('2d');
+            let particles = [];
+            
+            function resizeCanvas() {
+                particleCanvas.width = window.innerWidth; particleCanvas.height = window.innerHeight;
+                overlayCanvas.width = videoElement.clientWidth || 176; overlayCanvas.height = videoElement.clientHeight || 128;
+                if (typeof renderer !== 'undefined' && renderer && container3d && container3d.clientWidth > 0 && container3d.clientHeight > 0) { 
+                    threeCamera.aspect = container3d.clientWidth / container3d.clientHeight; 
+                    threeCamera.updateProjectionMatrix(); renderer.setSize(container3d.clientWidth, container3d.clientHeight); 
+                }
+                if (typeof arRenderer !== 'undefined' && arRenderer) { arCamera.aspect = window.innerWidth / window.innerHeight; arCamera.updateProjectionMatrix(); arRenderer.setSize(window.innerWidth, window.innerHeight); }
+            }
+            window.addEventListener('resize', resizeCanvas);
+            
+            class Particle {
+                constructor() { this.reset(true); }
+                reset(randomY = false) { 
+                    this.x = Math.random() * particleCanvas.width; 
+                    this.y = randomY ? Math.random() * particleCanvas.height : particleCanvas.height + Math.random() * 100; 
+                    this.size = Math.random() * 2.5 + 0.5; 
+                    this.speedX = Math.random() * 0.6 - 0.3; 
+                    this.speedY = -(Math.random() * 1.5 + 0.5); 
+                    this.alpha = Math.random() * 0.8 + 0.2; 
+                    this.life = Math.random() * 0.02 + 0.005; 
+                    this.sinValue = Math.random() * Math.PI * 2;
+                }
+                update() { 
+                    this.sinValue += 0.05; this.x += this.speedX + Math.sin(this.sinValue) * 0.5; this.y += this.speedY; 
+                    if (Math.random() > 0.95) this.alpha -= this.life * 5; 
+                    if (this.y < -10 || this.alpha <= 0) this.reset(); 
+                }
+                draw() { 
+                    partCtx.fillStyle = `rgba(252, 211, 77, ${Math.max(0, this.alpha)})`; 
+                    partCtx.beginPath(); partCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2); partCtx.fill(); 
+                    partCtx.fillStyle = `rgba(180, 83, 9, ${Math.max(0, this.alpha * 0.3)})`; 
+                    partCtx.beginPath(); partCtx.arc(this.x, this.y, this.size * 2.5, 0, Math.PI * 2); partCtx.fill(); 
+                }
+            }
+            function initParticles() { particles = []; for (let i = 0; i < 80; i++) particles.push(new Particle()); }
+            
+            function animateRender() {
+                requestAnimationFrame(animateRender);
+                partCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height); 
+                particles.forEach(p => { p.update(); p.draw(); });
+                
+                const isDetailVisible = !detailView.classList.contains('hidden');
+                if (isDetailVisible && !isARMode) {
+                    targetRotationX *= 0.92; targetRotationY *= 0.92;
+                    currentRotationX += (targetRotationX - currentRotationX) * 0.15;
+                    currentRotationY += (targetRotationY - currentRotationY) * 0.15;
+                    currentFloatY = Math.sin(Date.now() * 0.002) * 8; 
+                    
+                    const imgEl = document.getElementById('detail-mask-img');
+                    if (imgEl && !imgEl.classList.contains('hidden')) imgEl.style.transform = `translateY(${currentFloatY}px) rotateX(${-currentRotationX}rad) rotateY(${currentRotationY}rad)`;
+                    if (typeof currentModel !== 'undefined' && currentModel) { 
+                        currentModel.rotation.y = currentRotationY; currentModel.rotation.x = currentRotationX; 
+                        currentModel.position.y = Math.sin(Date.now() * 0.002) * 0.15 + 0.42; 
+                        if (typeof renderer !== 'undefined' && renderer) renderer.render(scene, threeCamera); 
+                    }
+                }
+
+                if (isARMode && cameraActive) {
+                    if (arCanvas.width !== videoElement.videoWidth && videoElement.videoWidth > 0) { arCanvas.width = videoElement.videoWidth; arCanvas.height = videoElement.videoHeight; }
+                    if (arCanvas.width > 0) {
+                        arCtx.clearRect(0, 0, arCanvas.width, arCanvas.height);
+                        
+                        const activeMask = activeMaskIndex !== null ? masksData[activeMaskIndex] : null;
+
+                        if (latestFaceLandmarks) {
+                            if(!arLoadingIndicator.classList.contains('opacity-0')) arLoadingIndicator.classList.add('opacity-0');
+                            const minX = Math.min(...latestFaceLandmarks.map(l => l.x)), maxX = Math.max(...latestFaceLandmarks.map(l => l.x));
+                            const minY = Math.min(...latestFaceLandmarks.map(l => l.y)), maxY = Math.max(...latestFaceLandmarks.map(l => l.y));
+
+                            if (activeMask && activeMask.objUrl && typeof arCurrentModel !== 'undefined' && arCurrentModel) {
+                                arCurrentModel.visible = true;
+                                const ndcX = ((minX + maxX) / 2 * 2) - 1, ndcY = -((minY + maxY) / 2 * 2) + 1; 
+                                const worldHeight = 2 * Math.tan(arCamera.fov * Math.PI / 360) * arCamera.position.z;
+                                const worldWidth = worldHeight * arCamera.aspect;
+                                const worldX = ndcX * (worldWidth / 2), worldY = ndcY * (worldHeight / 2);
+                                const faceWorldWidth = (maxX - minX) * worldWidth;
+                                const targetScale = (faceWorldWidth / arCurrentModel.userData.originalSize) * 2.0;
+                                arCurrentModel.scale.set(targetScale, targetScale, targetScale);
+
+                                const leftEye = latestFaceLandmarks[33], rightEye = latestFaceLandmarks[263], nose = latestFaceLandmarks[1];
+                                const roll = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x);
+                                const yaw = ((leftEye.x + rightEye.x) / 2 - nose.x) * 2.5; 
+                                const pitch = ((leftEye.y + rightEye.y) / 2 - nose.y + 0.06) * 3.0; 
+
+                                arCurrentModel.position.set(worldX, worldY + faceWorldWidth * 0.25, 0);
+                                arCurrentModel.rotation.set(pitch, yaw, -roll);
+                                if (typeof arRenderer !== 'undefined' && arRenderer) arRenderer.render(arScene, arCamera);
+
+                            } else if (activeMask && activeMask.image && arMaskImage.complete && arMaskImage.naturalWidth > 0) {
+                                if (typeof arCurrentModel !== 'undefined' && arCurrentModel) arCurrentModel.visible = false;
+                                const fw = (maxX - minX) * arCanvas.width, fh = (maxY - minY) * arCanvas.height;
+                                const fcX = (minX + maxX) / 2 * arCanvas.width, fcY = (minY + maxY) / 2 * arCanvas.height;
+                                const leftEye = latestFaceLandmarks[33], rightEye = latestFaceLandmarks[263];
+                                const angle = Math.atan2((rightEye.y - leftEye.y) * arCanvas.height, (rightEye.x - leftEye.x) * arCanvas.width);
+
+                                arCtx.save(); arCtx.translate(fcX, fcY); arCtx.rotate(angle);
+                                try { arCtx.drawImage(arMaskImage, -(fw * 2.2)/2, -(fh * 2.2)/2 - (fh * 2.2 * 0.25), fw * 2.2, fh * 2.2); } catch(e) {} 
+                                arCtx.restore();
+                            }
+                        } else {
+                            if (typeof arCurrentModel !== 'undefined' && arCurrentModel) arCurrentModel.visible = false;
+                            if (typeof arRenderer !== 'undefined' && arRenderer && typeof arScene !== 'undefined' && arScene && typeof arCamera !== 'undefined' && arCamera) arRenderer.clear();
+                        }
+                    }
+                }
+            }
+
+            // --- 数据生成 ---
+            function generate90Masks() {
+                if (masksData.length > 0) return; 
+                const keys = Object.keys(hallMap);
+                for (let i = 0; i < 90; i++) {
+                    const mainCat = keys[i % keys.length];
+                    const subCats = hallMap[mainCat];
+                    const subCat = subCats[i % subCats.length];
+                    let currentImage = `${(i % 9) + 1}.jpg`;
+                    let nameTemplate = mainCat === '古代面具馆' ? "通神木面" : mainCat === '古代服饰馆' ? "织锦古袍" : mainCat === '古代家具馆' ? "祥云太师椅" : "祈福延年匾";
+
+                    masksData.push({
+                        id: i, serial: `Art-${1000 + i}`, name: `${subCat}·${nameTemplate}`, materialType: mainCat, subCategory: subCat,
+                        color: '#e5c583', image: currentImage, objUrl: null, mtlUrl: null, textureUrl: null,
+                        era: "明清时期", location: "中国西南", spec: "自适应规格", description: `属于${mainCat}馆中的【${subCat}】陈列区，承载着古代华夏先民的深切渴望与高超工艺。`
+                    });
+                }
+            }
+
+            // --- 展厅内部二级分类 Tabs 渲染 (适配移动端横滑) ---
+            function renderSubCategoryTabs() {
+                const navContainer = document.getElementById('sub-category-nav');
+                navContainer.innerHTML = '';
+                const currentMainFilter = document.getElementById('material-filter').value;
+                let availableSubCats = new Set();
+                masksData.forEach(mask => { if (currentMainFilter === 'all' || mask.materialType === currentMainFilter) availableSubCats.add(mask.subCategory || '未分类'); });
+                
+                if (availableSubCats.size <= 1 && availableSubCats.has('未分类') && currentMainFilter !== 'all') { navContainer.classList.add('hidden'); return; }
+                navContainer.classList.remove('hidden');
+
+                const createBtn = (text, filterVal, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = `interactive-element animate-fade-in-up px-4 py-1.5 md:px-5 md:py-2 rounded-full text-[10px] md:text-xs font-bold tracking-widest transition-all duration-300 border shrink-0 whitespace-nowrap ${currentSubCategoryFilter === filterVal ? 'bg-amber-600 text-black border-amber-500 shadow-[0_0_15px_rgba(217,119,6,0.6)]' : 'bg-black/60 text-stone-400 border-stone-700/80 hover:text-amber-300 hover:border-amber-600/50 hover:bg-amber-950/40'}`;
+                    btn.style.animationDelay = `${index * 0.05}s`; 
+                    btn.innerText = text;
+                    btn.addEventListener('click', () => { soundSynth.playClick(); currentSubCategoryFilter = filterVal; renderSubCategoryTabs(); renderGallery(); });
+                    return btn;
+                };
+                
+                let btnIndex = 0;
+                navContainer.appendChild(createBtn('全部分区', 'all', btnIndex++));
+                [...availableSubCats].sort().forEach(subCat => navContainer.appendChild(createBtn(subCat, subCat, btnIndex++)));
+            }
+
+            // --- 渲染大厅“展馆”选择卡片 (适配移动端尺寸) ---
+            function renderCategorySelection() {
+                const container = document.getElementById('category-cards-container');
+                container.innerHTML = '';
+                
+                let cardIndex = 0; 
+
+                const allCard = document.createElement('div');
+                allCard.className = "interactive-element animate-fade-in-up animate-float group relative h-[200px] md:h-[320px] rounded-2xl md:rounded-3xl overflow-hidden border border-amber-500/40 cursor-pointer transform transition-all duration-500 hover:scale-105 hover:shadow-[0_30px_60px_rgba(245,158,11,0.25)] md:col-span-2 lg:col-span-2"; 
+                allCard.style.animationDelay = `${cardIndex * 0.1}s, 0s`; 
+                
+                const allCoverImg = masksData.length > 0 ? masksData[0].image : '';
+                allCard.innerHTML = `
+                    <div class="absolute inset-0 bg-stone-900 overflow-hidden flex items-center justify-center">
+                        <img src="${allCoverImg}" class="w-full h-[150%] object-cover opacity-50 group-hover:opacity-70 transition duration-700 group-hover:scale-110 filter blur-[2px] group-hover:blur-0" onerror="this.src='${fallbackSVG}'">
+                        <div class="absolute inset-0 bg-gradient-to-t from-[#0b0c10] via-black/50 to-transparent"></div>
+                    </div>
+                    <div class="absolute inset-0 p-5 md:p-8 flex flex-col justify-end z-10">
+                        <div class="text-amber-400 text-[8px] md:text-[10px] font-bold tracking-[0.3em] md:tracking-[0.4em] mb-2 md:mb-3 uppercase border border-amber-500/40 w-max px-2 py-0.5 md:px-3 md:py-1 rounded bg-black/70 backdrop-blur-md shadow-lg">全局阅览区</div>
+                        <h3 class="text-2xl md:text-4xl font-bold text-amber-50 tracking-widest mb-1 md:mb-2 group-hover:text-amber-400 transition-colors drop-shadow-lg">博物馆全景总览</h3>
+                        <p class="text-stone-300 text-[10px] md:text-sm tracking-wider font-mono">一览全部 ${masksData.length} 件旷世奇珍</p>
+                    </div>
+                    <div class="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 border border-amber-300 flex items-center justify-center text-black group-hover:scale-110 group-hover:-rotate-12 transition-all duration-300 shadow-[0_0_20px_rgba(245,158,11,0.5)] z-10">
+                        <i class="fa-solid fa-layer-group text-base md:text-xl"></i>
+                    </div>
+                `;
+                allCard.addEventListener('click', () => {
+                    soundSynth.playClick(); document.getElementById('category-selection-view').classList.add('hidden'); document.getElementById('main-gallery').classList.remove('hidden');
+                    document.getElementById('material-filter').value = 'all'; currentSubCategoryFilter = 'all'; document.getElementById('current-room-name').innerText = `博物馆全景`;
+                    renderSubCategoryTabs(); renderGallery();
+                });
+                container.appendChild(allCard);
+                cardIndex++;
+
+                const allCats = [...window.appCategories];
+                const uniqueMats = [...new Set(masksData.map(m => m.materialType))];
+                uniqueMats.forEach(mat => { if(!allCats.includes(mat) && mat !== '未分类') allCats.push(mat); });
+                if (masksData.some(m => m.materialType === '未分类')) allCats.push('未分类');
+
+                allCats.forEach((cat) => {
+                    const categoryMasks = masksData.filter(m => m.materialType === cat);
+                    const coverImg = categoryMasks.length > 0 ? categoryMasks[0].image : '';
+                    const card = document.createElement('div');
+                    card.className = "interactive-element animate-fade-in-up animate-float group relative h-[180px] md:h-[320px] rounded-2xl md:rounded-3xl overflow-hidden border border-stone-800 cursor-pointer transform transition-all duration-500 hover:scale-105 hover:border-amber-600/50 hover:shadow-[0_20px_50px_rgba(245,158,11,0.15)]";
+                    card.style.animationDelay = `${cardIndex * 0.1}s, ${(cardIndex%3)*0.5}s`; 
+                    
+                    card.innerHTML = `
+                        <div class="absolute inset-0 bg-stone-900 overflow-hidden flex items-center justify-center">
+                            <img src="${coverImg}" class="w-full h-[150%] object-cover opacity-30 group-hover:opacity-60 transition duration-700 group-hover:scale-110 filter blur-[1px] group-hover:blur-0" onerror="this.src='${fallbackSVG}'">
+                            <div class="absolute inset-0 bg-gradient-to-t from-[#0b0c10] via-black/80 to-transparent"></div>
+                        </div>
+                        <div class="absolute inset-0 p-4 md:p-6 flex flex-col justify-end z-10">
+                            <div class="text-stone-400 group-hover:text-amber-400 text-[8px] md:text-[10px] font-bold tracking-[0.2em] md:tracking-[0.3em] mb-1.5 md:mb-2 uppercase border border-stone-700 group-hover:border-amber-500/50 w-max px-2 py-0.5 md:px-2.5 md:py-1 rounded bg-black/50 backdrop-blur-sm transition-colors">专属展馆</div>
+                            <h3 class="text-xl md:text-2xl font-bold text-stone-200 tracking-widest mb-1 group-hover:text-amber-300 transition-colors drop-shadow-md">${cat}</h3>
+                            <p class="text-stone-500 group-hover:text-amber-100/60 text-[9px] md:text-xs tracking-wider font-mono transition-colors">馆藏 ${categoryMasks.length} 件珍宝</p>
+                        </div>
+                        <div class="absolute top-3 right-3 md:top-5 md:right-5 w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/60 border border-stone-700 flex items-center justify-center text-stone-500 group-hover:bg-amber-600 group-hover:border-amber-400 group-hover:text-black transition-all duration-300 shadow-inner z-10">
+                            <i class="fa-solid fa-arrow-right -rotate-45 group-hover:rotate-0 transition-transform duration-300 text-[10px] md:text-sm"></i>
+                        </div>
+                    `;
+                    card.addEventListener('click', () => {
+                        soundSynth.playClick(); document.getElementById('category-selection-view').classList.add('hidden'); document.getElementById('main-gallery').classList.remove('hidden');
+                        document.getElementById('material-filter').value = cat; currentSubCategoryFilter = 'all'; document.getElementById('current-room-name').innerText = `${cat}`;
+                        renderSubCategoryTabs(); renderGallery();
+                    });
+                    container.appendChild(card);
+                    cardIndex++;
+                });
+            }
+
+            function updateFilterOptions() {
+                const uniqueMats = [...new Set(masksData.map(m => m.materialType))];
+                uniqueMats.forEach(mat => { if(!window.appCategories.includes(mat) && mat !== '未分类') { window.appCategories.push(mat); } });
+                
+                const uniqueSubs = [...new Set(masksData.map(m => m.subCategory || '未分类'))];
+                uniqueSubs.forEach(sub => { if(!window.appSubCategories.includes(sub) && sub !== '未分类') { window.appSubCategories.push(sub); } });
+
+                const filter = document.getElementById('material-filter'), dataList = document.getElementById('dynamic-categories'), subDataList = document.getElementById('dynamic-subcategories');
+                const oldVal = filter.value;
+                filter.innerHTML = '<option value="all">所有展馆</option>';
+                if(dataList) dataList.innerHTML = ''; if(subDataList) subDataList.innerHTML = '';
+                
+                window.appCategories.forEach(cat => { filter.appendChild(new Option(cat, cat)); if(dataList) dataList.appendChild(new Option(cat, cat)); });
+                filter.appendChild(new Option('未分类', '未分类'));
+                
+                window.appSubCategories.forEach(sub => { if(subDataList) subDataList.appendChild(new Option(sub, sub)); });
+
+                Array.from(filter.options).forEach(opt => { if(opt.value === oldVal) filter.value = oldVal; });
+                renderCategoriesUI(); renderCategorySelection();
+            }
+
+            function renderGallery() {
+                const grid = document.getElementById('mask-grid'), selectedFilter = document.getElementById('material-filter').value, emptyHint = document.getElementById('empty-room-hint');
+                Array.from(grid.children).forEach(child => { if(child.id !== 'empty-room-hint') grid.removeChild(child); });
+                let filteredCount = 0;
+                let renderIndex = 0;
+
+                masksData.forEach((mask, index) => {
+                    if (selectedFilter !== 'all' && mask.materialType !== selectedFilter) return;
+                    if (currentSubCategoryFilter !== 'all' && (mask.subCategory || '未分类') !== currentSubCategoryFilter) return;
+                    
+                    filteredCount++;
+                    const isSelected = selectedMaskIndices.includes(index);
+                    const item = document.createElement('div');
+                    item.className = `group animate-fade-in-up relative aspect-[3/4] flex flex-col items-center justify-between p-3 md:p-5 rounded-xl md:rounded-2xl border cursor-pointer transition-all transform duration-500 interactive-element ${isSelected ? 'ring-2 ring-blue-500 bg-blue-900/50 scale-95 shadow-[0_0_20px_rgba(59,130,246,0.6)]' : 'border-stone-800/80 bg-gradient-to-b from-stone-900/40 to-[#0b0c10] hover:border-amber-500/50 hover:-translate-y-1 md:hover:-translate-y-2 hover:shadow-[0_15px_40px_rgba(245,158,11,0.2)]'}`;
+                    item.style.animationDelay = `${renderIndex * 0.05}s`;
+                    renderIndex++;
+
+                    item.dataset.index = index;
+                    item.innerHTML = `
+                        ${mask.objUrl ? `<div class="absolute top-2 left-2 md:top-4 md:left-4 text-[7px] md:text-[9px] font-bold tracking-widest ${mask.mtlUrl ? 'bg-purple-900/80 text-purple-300 border border-purple-700/50' : 'bg-emerald-900/80 text-emerald-300 border border-emerald-700/50'} px-1.5 py-0.5 md:px-2.5 md:py-1 rounded shadow-lg z-10 backdrop-blur-md">${mask.mtlUrl ? '3D+材质' : '3D'}</div>` : ''}
+                        <div class="check-icon absolute top-2 right-2 md:top-4 md:right-4 text-blue-400 z-10 text-base md:text-xl drop-shadow-md transition-opacity duration-300 ${isSelected ? 'opacity-100' : 'opacity-0'}"><i class="fa-solid fa-circle-check"></i></div>
+                        <div class="flex-1 w-full flex items-center justify-center pointer-events-none mt-2 mb-2 md:mt-4 md:mb-4 overflow-hidden relative">
+                            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 md:w-24 md:h-24 bg-amber-600/10 rounded-full blur-xl md:blur-2xl group-hover:bg-amber-500/20 transition-colors duration-500 z-0"></div>
+                            <img src="${mask.image}" alt="${mask.name}" class="relative z-10 w-full h-full max-h-[100px] md:max-h-[160px] object-contain filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] md:drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] transition-transform duration-700 ease-out group-hover:scale-110" onerror="this.src='${fallbackSVG}'">
+                        </div>
+                        <div class="w-full flex flex-col items-center z-10 pt-2 md:pt-4 mt-auto relative border-t border-stone-800 group-hover:border-amber-900/50 transition-colors">
+                            <span class="text-[7px] md:text-[9px] text-stone-500 group-hover:text-amber-600/80 mb-1 md:mb-1.5 tracking-[0.1em] md:tracking-[0.2em] uppercase font-bold truncate w-full text-center transition-colors">${mask.materialType} <span class="hidden sm:inline">${mask.subCategory ? `<span class="text-stone-700 group-hover:text-amber-900 mx-1">|</span> <span class="text-blue-400/80 group-hover:text-amber-500">${mask.subCategory}</span>` : ''}</span></span>
+                            <span class="text-[11px] md:text-[13px] text-stone-300 font-bold truncate w-full text-center tracking-widest group-hover:text-amber-100 transition-colors">${mask.name.split('·').pop()}</span>
+                        </div>
+                    `;
+                    item.addEventListener('click', () => { if (isBatchSelectMode) toggleBatchSelection(index); else selectMask(index); });
+                    grid.appendChild(item);
+                });
+                
+                document.getElementById('total-count').innerText = `共 ${filteredCount} 件`;
+                if(filteredCount === 0) emptyHint.classList.remove('hidden'); else emptyHint.classList.add('hidden');
+            }
+            
+            document.getElementById('back-to-categories-btn').addEventListener('click', () => {
+                soundSynth.playClick(); document.getElementById('main-gallery').classList.add('hidden'); document.getElementById('category-selection-view').classList.remove('hidden');
+                renderCategorySelection();
+            });
+
+            document.getElementById('material-filter').addEventListener('change', (e) => {
+                document.getElementById('current-room-name').innerText = e.target.value === 'all' ? '博物馆全景' : `${e.target.value}`;
+                currentSubCategoryFilter = 'all'; renderSubCategoryTabs(); renderGallery();
+            });
+
+            function selectMask(index) {
+                soundSynth.playClick(); activeMaskIndex = index; const mask = masksData[index];
+                document.getElementById('main-gallery').classList.add('hidden'); detailView.classList.remove('hidden');
+                
+                // 重置 AI 区域
+                document.getElementById('ai-story-box').classList.add('hidden');
+                document.getElementById('ai-chat-reply').classList.add('hidden');
+                document.getElementById('ai-tts-btn').classList.add('hidden');
+                document.getElementById('ai-chat-input').value = '';
+                
+                if(window.speechSynthesis) window.speechSynthesis.cancel();
+                if (currentAiAudio) { currentAiAudio.pause(); currentAiAudio = null; }
+                currentAiStoryText = "";
+                
+                setTimeout(() => { resizeCanvas(); }, 50);
+
+                typeWriterEffect(document.getElementById('detail-title'), mask.name, 30);
+                document.getElementById('detail-material').innerText = mask.materialType;
+                document.getElementById('detail-era').innerText = mask.era; 
+                document.getElementById('detail-desc').innerText = mask.description;
+                document.getElementById('detail-location').innerText = mask.location; 
+                document.getElementById('detail-spec').innerText = mask.spec;
+                
+                const imgEl = document.getElementById('detail-mask-img');
+                if (isAdminMode) { if (mask.objUrl) document.getElementById('change-texture-btn').classList.remove('hidden'); else document.getElementById('change-texture-btn').classList.add('hidden'); }
+                
+                if (typeof currentModel !== 'undefined' && currentModel) { 
+                    disposeThreeObject(currentModel);
+                    scene.remove(currentModel); 
+                    currentModel = null; 
+                }
+                
+                arSessionId++; // 使得之前的加载作废
+                const currentSession = arSessionId;
+                
+                if (mask.objUrl) {
+                    document.getElementById('three-container').classList.remove('hidden'); imgEl.classList.add('hidden');
+                    document.getElementById('interaction-hint').innerHTML = `<i class="fa-solid fa-cube text-emerald-400"></i> 当前为全息 3D 模式 ${mask.textureUrl ? '(已加载覆盖贴图)' : mask.mtlUrl ? '(含材质)' : ''}`;
+                    load3DModel(mask.objUrl, mask.mtlUrl, mask.textureUrl, (modelGroup) => {
+                        if (currentSession !== arSessionId) return; // 🌟 拦截已被用户抛弃的加载任务
+                        const scale = 3.5 / modelGroup.userData.originalSize;
+                        modelGroup.scale.set(scale, scale, scale); currentModel = modelGroup; scene.add(currentModel);
+                    });
+                } else {
+                    document.getElementById('three-container').classList.add('hidden'); imgEl.classList.remove('hidden');
+                    document.getElementById('interaction-hint').innerHTML = `<i class="fa-regular fa-image text-amber-500"></i> 当前为 2D 悬浮影像`;
+                    imgEl.src = mask.image; 
+                    imgEl.onerror = function() { this.src = fallbackSVG; };
+                }
+                targetRotationX = 0; targetRotationY = 0; currentRotationX = 0; currentRotationY = 0;
+                document.getElementById('delete-mask-btn').dataset.confirm = "false"; document.getElementById('delete-mask-btn').innerHTML = '<i class="fa-solid fa-trash-can text-sm"></i>';
+            }
+            
+            function goBackToGallery() { 
+                soundSynth.playClick(); activeMaskIndex = null; detailView.classList.add('hidden'); document.getElementById('main-gallery').classList.remove('hidden'); 
+                if(window.speechSynthesis) window.speechSynthesis.cancel();
+                if (currentAiAudio) { currentAiAudio.pause(); currentAiAudio = null; }
+            }
+            document.getElementById('back-btn').addEventListener('click', goBackToGallery);
+
+            // --- 批量图像智配导入管理 ---
+            const importerModal = document.getElementById('importer-modal');
+            
+            document.getElementById('open-importer-btn').addEventListener('click', () => { 
+                soundSynth.playClick(); 
+                const currentFilter = document.getElementById('material-filter').value;
+                const currentSubFilter = currentSubCategoryFilter;
+                let hallName = currentFilter === 'all' ? '博物馆全景 (将新增至未分类)' : `【${currentFilter}】`;
+                if (currentSubFilter !== 'all') hallName += ` -> 【${currentSubFilter}】区`;
+                document.getElementById('import-target-hall-name').innerText = hallName;
+                
+                tempImportMap = {}; document.getElementById('custom-img-count').innerText = '0';
+                importerModal.classList.remove('hidden'); 
+            });
+
+            document.getElementById('close-importer-btn').addEventListener('click', () => importerModal.classList.add('hidden'));
+            
+            document.getElementById('close-importer-ok').addEventListener('click', () => {
+                soundSynth.playClick(); importerModal.classList.add('hidden');
+                const currentFilter = document.getElementById('material-filter').value;
+                const currentSubFilter = currentSubCategoryFilter;
+                
+                const targetIndices = [];
+                masksData.forEach((m, idx) => {
+                    if (currentFilter !== 'all' && m.materialType !== currentFilter) return;
+                    if (currentSubFilter !== 'all' && (m.subCategory || '未分类') !== currentSubFilter) return;
+                    targetIndices.push(idx);
+                });
+
+                const newMaterialType = currentFilter === 'all' ? '未分类' : currentFilter;
+                const newSubCategory = currentSubFilter === 'all' ? '未分类' : currentSubFilter;
+
+                Object.keys(tempImportMap).forEach(localIdxStr => {
+                    const localIdx = parseInt(localIdxStr);
+                    const globalIdx = targetIndices[localIdx];
+                    const imgUrl = tempImportMap[localIdxStr];
+
+                    if (globalIdx !== undefined) masksData[globalIdx].image = imgUrl;
+                    else {
+                        masksData.push({
+                            id: Date.now() + localIdx, serial: `Art-New-${Math.floor(Math.random()*9000)+1000}`, 
+                            name: `${newSubCategory === '未分类' ? '新展品' : newSubCategory}·未知珍宝`,
+                            materialType: newMaterialType, subCategory: newSubCategory,
+                            color: '#e5c583', image: imgUrl, objUrl: null, mtlUrl: null, textureUrl: null,
+                            era: "现代导入", location: "馆藏库房", spec: "批量智能生成", 
+                            description: `通过批量图像智配引擎自动生成的藏品记录，已自动归属至【${newMaterialType}】->【${newSubCategory}】。`
+                        });
+                    }
+                });
+                
+                tempImportMap = {}; updateFilterOptions(); renderSubCategoryTabs(); renderGallery(); renderCategorySelection(); 
+                showToast("批量导入与智能扩充完成！", "success");
+            });
+
+            document.getElementById('clear-custom-images-btn').addEventListener('click', () => { soundSynth.playClick(); tempImportMap = {}; document.getElementById('custom-img-count').innerText = '0'; showToast("已清空本次上传缓存。"); });
+
+            function processImportedFiles(files) {
+                let sequentialIndex = 0; let successCount = 0;
+
+                Array.from(files).forEach(file => {
+                    if (!file.type.startsWith('image/')) return;
+                    const fileUrl = URL.createObjectURL(file);
+                    const matches = file.name.match(/\d+/);
+                    
+                    if (matches && matches.length > 0) {
+                        const fileNum = parseInt(matches[0]);
+                        if (!tempImportMap[fileNum - 1]) { tempImportMap[fileNum - 1] = fileUrl; successCount++; } else assignSequentially(fileUrl);
+                    } else assignSequentially(fileUrl);
+                });
+
+                function assignSequentially(url) {
+                    let escapeCounter = 0; 
+                    while (escapeCounter < 2000) { 
+                        if (!tempImportMap[sequentialIndex]) { 
+                            tempImportMap[sequentialIndex] = url; successCount++; sequentialIndex++; break; 
+                        }
+                        sequentialIndex++; escapeCounter++;
+                    }
+                }
+                
+                document.getElementById('custom-img-count').innerText = Object.keys(tempImportMap).length;
+                showToast(`已解析 ${successCount} 张图片，超出当前馆藏的部分将自动创建新展品。`);
+            }
+            
+            const dropZone = document.getElementById('drop-zone'), bulkImageInput = document.getElementById('bulk-image-input');
+            dropZone.addEventListener('click', () => bulkImageInput.click());
+            bulkImageInput.addEventListener('change', (e) => { if (e.target.files.length > 0) processImportedFiles(e.target.files); });
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-amber-500', 'bg-stone-900/60'); });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-amber-500', 'bg-stone-900/60'));
+            dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('border-amber-500', 'bg-stone-900/60'); if (e.dataTransfer.files.length > 0) processImportedFiles(e.dataTransfer.files); });
+
+            // --- 二次确认安全删除逻辑 ---
+            const delBtn = document.getElementById('delete-mask-btn');
+            let deleteConfirmTimeout;
+            delBtn.addEventListener('click', () => {
+                soundSynth.playClick();
+                if (delBtn.dataset.confirm === 'true') {
+                    if (currentModel) { disposeThreeObject(currentModel); scene.remove(currentModel); currentModel = null; }
+                    
+                    masksData.splice(activeMaskIndex, 1); 
+                    detailView.classList.add('hidden'); document.getElementById('main-gallery').classList.remove('hidden');
+                    updateFilterOptions(); renderGallery(); showToast("文物记录已永久销毁", "error");
+                    delBtn.dataset.confirm = 'false'; delBtn.innerHTML = '<i class="fa-solid fa-trash-can text-sm md:text-base"></i>'; clearTimeout(deleteConfirmTimeout);
+                    
+                    isBatchSelectMode=false; selectedMaskIndices=[]; document.getElementById('batch-action-bar').classList.add('hidden');
+                } else {
+                    delBtn.dataset.confirm = 'true'; delBtn.innerHTML = '<span class="text-[10px] font-bold">确认销毁?</span>'; clearTimeout(deleteConfirmTimeout);
+                    deleteConfirmTimeout = setTimeout(() => { delBtn.dataset.confirm = 'false'; delBtn.innerHTML = '<i class="fa-solid fa-trash-can text-sm md:text-base"></i>'; }, 3000);
+                }
+            });
+
+            // --- 🌟 核心新增：AI 留影明信片生成引擎 🌟 ---
+            const postcardModal = document.getElementById('postcard-modal');
+            let currentPostcardDataUrl = null;
+            let currentMaskObj = null;
+
+            function showPostcardModal(photoDataUrl, maskObj, aiText) {
+                currentPostcardDataUrl = photoDataUrl;
+                currentMaskObj = maskObj;
+                
+                const maskImgEl = document.getElementById('postcard-mask-img');
+                maskImgEl.src = maskObj.image;
+                maskImgEl.onerror = function() { this.src = fallbackSVG; };
+                
+                document.getElementById('postcard-photo').src = photoDataUrl;
+                document.getElementById('postcard-title').innerText = maskObj.name;
+                document.getElementById('postcard-subtitle').innerText = `${maskObj.materialType} · ${maskObj.era}`;
+                
+                let descText = aiText || maskObj.description;
+                if (descText.length > 70) descText = descText.substring(0, 70) + '...';
+                document.getElementById('postcard-desc').innerText = descText;
+
+                const qrContent = `ID:${maskObj.serial}`;
+                const qrContainer = document.getElementById('postcard-qrcode');
+                qrContainer.innerHTML = ''; 
+                
+                new QRCode(qrContainer, {
+                    text: qrContent,
+                    width: 128, height: 128, 
+                    colorDark : "#000000", colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.L
+                });
+
+                postcardModal.classList.remove('hidden');
+                setTimeout(() => { postcardModal.classList.remove('opacity-0', 'scale-95'); }, 50);
+            }
+
+            document.getElementById('close-postcard-btn').addEventListener('click', () => {
+                soundSynth.playClick();
+                postcardModal.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => { postcardModal.classList.add('hidden'); }, 500);
+            });
+
+            // ✨ 高清 Canvas 合成引擎：按视觉稿重绘一切元素 ✨
+            document.getElementById('download-postcard-btn').addEventListener('click', async () => {
+                soundSynth.playClick();
+                const btn = document.getElementById('download-postcard-btn');
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 正在合成高清长图...';
+                
+                try {
+                    await new Promise(r => setTimeout(r, 400)); 
+                    
+                    const contentEl = document.getElementById('postcard-content');
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const scale = 3; 
+                    const cw = contentEl.offsetWidth; 
+                    
+                    ctx.font = '13px "Noto Serif SC", serif';
+                    const desc = document.getElementById('postcard-desc').innerText;
+                    const words = desc.split('');
+                    let testLine = '';
+                    const lines = [];
+                    for(let n = 0; n < words.length; n++) {
+                        const test = testLine + words[n];
+                        if (ctx.measureText(test).width > cw - 60 && n > 0) { lines.push(testLine); testLine = words[n]; } 
+                        else { testLine = test; }
+                    }
+                    lines.push(testLine);
+
+                    const topAreaH = 260; 
+                    const textHeight = lines.length * 20; 
+                    const photoW = cw - 48; 
+                    const photoH = photoW * 0.75; 
+                    const totalH = topAreaH + 70 + textHeight + 30 + photoH + 50; 
+                    
+                    canvas.width = cw * scale;
+                    canvas.height = totalH * scale;
+                    ctx.scale(scale, scale);
+                    
+                    ctx.fillStyle = '#050507';
+                    ctx.fillRect(0, 0, cw, totalH);
+                    
+                    const grd = ctx.createLinearGradient(0,0,0,topAreaH);
+                    grd.addColorStop(0, 'rgba(120, 53, 15, 0.4)'); 
+                    grd.addColorStop(1, '#050507');
+                    ctx.fillStyle = grd;
+                    ctx.fillRect(0, 0, cw, topAreaH);
+                    
+                    const maskImg = new Image();
+                    maskImg.src = document.getElementById('postcard-mask-img').src;
+                    await new Promise(r => { maskImg.onload = r; maskImg.onerror = r; });
+                    const mw = cw * 0.65;
+                    const mAspect = maskImg.width / maskImg.height || 1;
+                    const mh = mw / mAspect;
+                    ctx.drawImage(maskImg, (cw - mw)/2, (topAreaH - mh)/2 + 10, mw, mh);
+                    
+                    let currentY = topAreaH + 10;
+                    ctx.fillStyle = '#fef3c7'; 
+                    ctx.font = 'bold 26px "Noto Serif SC", serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(currentMaskObj.name, cw/2, currentY);
+                    
+                    currentY += 25;
+                    ctx.fillStyle = '#f59e0b'; 
+                    ctx.font = '11px monospace';
+                    ctx.fillText(`${currentMaskObj.materialType} · ${currentMaskObj.era}`, cw/2, currentY);
+                    
+                    currentY += 35;
+                    ctx.fillStyle = '#d6d3d1'; 
+                    ctx.font = '13px "Noto Serif SC", serif';
+                    lines.forEach(line => {
+                        ctx.fillText(line, cw/2, currentY);
+                        currentY += 20;
+                    });
+                    
+                    currentY += 15;
+                    const photoImg = new Image();
+                    photoImg.src = currentPostcardDataUrl;
+                    await new Promise(r => { photoImg.onload = r; });
+                    
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(24, currentY, photoW, photoH);
+                    ctx.drawImage(photoImg, 24, currentY, photoW, photoH);
+                    
+                    ctx.strokeStyle = '#44403c';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(24, currentY, photoW, photoH);
+                    
+                    const pGrd = ctx.createLinearGradient(0, currentY + photoH - 60, 0, currentY + photoH);
+                    pGrd.addColorStop(0, 'transparent');
+                    pGrd.addColorStop(1, 'rgba(0,0,0,0.8)');
+                    ctx.fillStyle = pGrd;
+                    ctx.fillRect(24, currentY + photoH - 60, photoW, 60);
+
+                    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                    ctx.font = 'bold 12px Cinzel, serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillText("HEZHOU MUSEUM", 36, currentY + photoH - 15);
+                    
+                    const qrCanvas = document.querySelector('#postcard-qrcode canvas');
+                    if (qrCanvas) {
+                        const qSize = 56;
+                        const qX = 24 + photoW - qSize - 12;
+                        const qY = currentY + photoH - qSize - 12;
+                        ctx.fillStyle = '#fff';
+                        if(ctx.roundRect) {
+                            ctx.beginPath(); ctx.roundRect(qX - 4, qY - 4, qSize + 8, qSize + 8, 4); ctx.fill();
+                        } else { ctx.fillRect(qX - 4, qY - 4, qSize + 8, qSize + 8); }
+                        ctx.drawImage(qrCanvas, qX, qY, qSize, qSize);
+                    }
+                    
+                    ctx.fillStyle = '#78716c';
+                    ctx.font = '11px "Noto Serif SC", serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText("扫码查阅档案 · 留存专属时空印记", cw/2, currentY + photoH + 30);
+                    
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+                    const a = document.createElement('a');
+                    a.href = dataUrl;
+                    a.download = `上古遗音_${currentMaskObj.name}_时空留影_${Date.now()}.jpg`;
+                    a.click();
+                    
+                    showToast("✅ 高清专属海报已存入您的设备！", "success");
+                } catch(e) {
+                    console.error("明信片合成出现严重异常:", e);
+                    showToast("明信片合成出现异常", "error");
+                } finally {
+                    btn.innerHTML = originalHTML;
+                }
+            });
+
+            // --- AR 脸部识别与事件 ---
+            async function initFaceMesh() {
+                try {
+                    faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
+                    // 🌟 核心修复 1：关闭极为耗费性能的精细虹膜追踪，释放手机端显存，防止页面假死
+                    faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: false, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
+                    faceMesh.onResults(r => { 
+                        latestFaceLandmarks = r.multiFaceLandmarks && r.multiFaceLandmarks.length > 0 ? r.multiFaceLandmarks[0] : null; 
+                        if (latestFaceLandmarks) {
+                            resetActivity(); // 🌟 如果检测到人脸（说明游客正在看屏幕试戴），立即重置看门狗，绝对不退回主页！
+                        }
+                    });
+
+                    // 🌟 核心修复 2：预加载模型，配合 async/await 顺序执行
+                    await faceMesh.initialize();
+                } catch(e) {
+                    console.warn("FaceMesh 初始化异常", e);
+                }
+            }
+            
+            function takeARPhoto() {
+                if (arShutterState === -1) return; // 防止重复触发
+                arShutterState = -1;
+
+                soundSynth.playShutter();
+                const flash = document.getElementById('ar-flash');
+                flash.classList.remove('hidden', 'flash-effect'); void flash.offsetWidth; flash.classList.add('flash-effect');
+                
+                const tempCanvas = document.createElement('canvas'); tempCanvas.width = arCanvas.width; tempCanvas.height = arCanvas.height;
+                const tCtx = tempCanvas.getContext('2d'); tCtx.translate(tempCanvas.width, 0); tCtx.scale(-1, 1); 
+                
+                // 🌟 重新拼合底层原生背景和透明面具涂层，保证成片的精准
+                tCtx.drawImage(document.getElementById('ar-bg-video'), 0, 0, tempCanvas.width, tempCanvas.height); 
+                tCtx.drawImage(arCanvas, 0, 0); 
+                
+                const activeMask = masksData[activeMaskIndex];
+                if (activeMask && activeMask.objUrl && typeof arRenderer !== 'undefined' && arRenderer && typeof arCurrentModel !== 'undefined' && arCurrentModel && arCurrentModel.visible) {
+                    tCtx.drawImage(arRenderer.domElement, 0, 0, tempCanvas.width, tempCanvas.height);
+                }
+
+                const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.9);
+                const maskName = activeMaskIndex !== null ? masksData[activeMaskIndex].name : "未知珍宝";
+                
+                capturedPhotos.unshift({ src: dataUrl, maskName: maskName, date: new Date().toLocaleString() });
+                document.getElementById('gallery-photo-count').innerText = capturedPhotos.length; 
+                
+                const aiTextToUse = currentAiStoryText || activeMask.description;
+                
+                // 🌟 体验优化：拍照后稍微延时停留，让人看清闪光灯，再平滑退出 AR 界面生成明信片
+                setTimeout(() => {
+                    document.getElementById('exit-ar-btn').click();
+                    setTimeout(() => {
+                        showPostcardModal(dataUrl, activeMask, aiTextToUse);
+                        arShutterState = 0; // 解除锁定
+                    }, 300);
+                }, 400); 
+            }
+
+            // 🌟 核心修复 3：添加 Ghost Click 防御锁，防止手机触摸穿透引发的“一秒闪退”
+            arView.addEventListener('click', (e) => {
+                // 如果距离开启 AR 界面还不满 1200 毫秒，强制拦截任何屏幕点击 (免疫穿透误触拍照)
+                if (Date.now() - arStartTime < 1200) return;
+
+                if (!e.target.closest('#exit-ar-btn') && arShutterState === 0) {
+                    takeARPhoto();
+                }
+            });
+
+            document.getElementById('start-ar-btn').addEventListener('click', () => {
+                soundSynth.playEntrance(); 
+                arStartTime = Date.now(); // 🌟 记录 AR 开启的时间戳，激活防御锁
+
+                const mask = masksData[activeMaskIndex];
+                if (typeof arCurrentModel !== 'undefined' && arCurrentModel) { disposeThreeObject(arCurrentModel); arScene.remove(arCurrentModel); arCurrentModel = null; }
+
+                arSessionId++; // 使得之前的加载作废
+                const currentSession = arSessionId;
+
+                // 🌟 把主摄像头的真实媒体流克隆给底层独立的全屏视频标签，并在进入AR瞬间将其静音播放
+                const arBgVideo = document.getElementById('ar-bg-video');
+                if (videoElement.srcObject) {
+                    arBgVideo.srcObject = videoElement.srcObject;
+                    arBgVideo.play().catch(e => console.log("AR BG Play blocked", e));
+                }
+                
+                // 隐藏掉右下角的悬浮窗，避免多重渲染影响性能
+                document.getElementById('webcam-container').classList.add('hidden');
+
+                if (mask.objUrl) {
+                    load3DModel(mask.objUrl, mask.mtlUrl, mask.textureUrl, (modelGroup) => { 
+                        if (currentSession !== arSessionId) return; // 🌟 拦截已被用户或看门狗抛弃的加载任务
+                        arCurrentModel = modelGroup; arCurrentModel.visible = false; arScene.add(arCurrentModel); 
+                    });
+                } else if(mask.image) { 
+                    arMaskImage.src = mask.image; 
+                    arMaskImage.onerror = function() { this.src = fallbackSVG; };
+                } else return showToast("该文物缺失图像或3D资产，无法开启映射。", "error"); 
+                
+                document.getElementById('ar-mask-name-display').innerText = mask.name; isARMode = true; arShutterState = 0; latestFaceLandmarks = null;
+                document.getElementById('ar-loading-indicator').classList.remove('opacity-0'); 
+                
+                // 🌟 统一 hidden 和 fade-out，防止渲染遗漏
+                document.getElementById('main-header').classList.add('hidden', 'fade-out');
+                document.getElementById('main-content').classList.add('hidden', 'fade-out'); 
+                document.getElementById('main-footer').classList.add('hidden', 'fade-out');
+                
+                document.getElementById('landing-screen').classList.add('hidden'); 
+                arView.classList.remove('hidden'); resizeCanvas();
+            });
+
+            document.getElementById('exit-ar-btn').addEventListener('click', () => {
+                soundSynth.playClick(); isARMode = false; arView.classList.add('hidden');
+                
+                arSessionId++; // 销毁进行中的加载
+                
+                if (typeof arCurrentModel !== 'undefined' && arCurrentModel) { disposeThreeObject(arCurrentModel); arScene.remove(arCurrentModel); arCurrentModel = null; if(typeof arRenderer !== 'undefined' && arRenderer) arRenderer.clear(); }
+            
+                // 🌟 还原原生摄像头容器到右下角，并停止全屏背景视频的播放以节省性能
+                document.getElementById('webcam-container').classList.remove('hidden');
+                document.getElementById('ar-bg-video').pause();
+
+                document.getElementById('main-header').classList.remove('hidden', 'fade-out'); 
+                document.getElementById('main-content').classList.remove('hidden', 'fade-out'); 
+                document.getElementById('main-footer').classList.remove('hidden', 'fade-out');
+                
+                showToast("已退出幻化试戴模式。"); setTimeout(() => { resizeCanvas(); }, 50);
+            });
+
+            // 游客图库 (Gallery)
+            const galleryModal = document.getElementById('gallery-modal');
+            document.getElementById('open-gallery-btn').addEventListener('click', () => { soundSynth.playClick(); renderGalleryUI(); galleryModal.classList.remove('hidden'); });
+            document.getElementById('close-gallery-btn').addEventListener('click', () => galleryModal.classList.add('hidden') );
+            document.getElementById('clear-gallery-btn').addEventListener('click', () => { soundSynth.playClick(); capturedPhotos = []; document.getElementById('gallery-photo-count').innerText = 0; renderGalleryUI(); showToast("私密图库已清空。"); });
+
+            function renderGalleryUI() {
+                const grid = document.getElementById('gallery-grid'); grid.innerHTML = '';
+                if(capturedPhotos.length === 0) { grid.innerHTML = `<div class="col-span-full text-center text-stone-500 py-10">暂无游客留影记录。</div>`; return; }
+                capturedPhotos.forEach((photo, idx) => {
+                    const card = document.createElement('div'); card.className = "bg-stone-950 border border-pink-900/40 rounded-xl overflow-hidden shadow-lg p-2";
+                    card.innerHTML = `
+                        <div class="aspect-video bg-black rounded-lg overflow-hidden relative group">
+                            <img src="${photo.src}" class="w-full h-full object-cover transform scale-x-[-1]">
+                            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                                 <a href="${photo.src}" download="游客留影_${idx}.jpg" class="bg-pink-600 text-white px-3 py-1.5 rounded-full text-xs flex items-center gap-2 hover:bg-pink-500 transition"><i class="fa-solid fa-download"></i> 导出</a>
+                            </div>
+                        </div>
+                        <div class="pt-2 px-1"><div class="text-xs font-bold text-pink-300 truncate">${photo.maskName}</div><div class="text-[10px] text-stone-500">${photo.date}</div></div>
+                    `; grid.appendChild(card);
+                });
+            }
+
+            // --- 管理员特权与控制台 ---
+            const toggleAdminBtn = document.getElementById('toggle-admin-btn'), authModal = document.getElementById('auth-modal');
+            function updateAdminUI() {
+                document.querySelectorAll('.admin-control').forEach(el => { if (isAdminMode) el.classList.remove('hidden'); else el.classList.add('hidden'); });
+                if (isAdminMode) {
+                    document.getElementById('admin-icon').className = "fa-solid fa-unlock-keyhole text-emerald-400"; document.getElementById('admin-text').innerText = "馆长模式";
+                    toggleAdminBtn.classList.add('border-emerald-500/50', 'text-emerald-400'); toggleAdminBtn.classList.remove('text-stone-400', 'border-stone-800');
+                } else {
+                    document.getElementById('admin-icon').className = "fa-solid fa-lock"; document.getElementById('admin-text').innerText = "游客浏览";
+                    toggleAdminBtn.classList.remove('border-emerald-500/50', 'text-emerald-400'); toggleAdminBtn.classList.add('text-stone-400', 'border-stone-800');
+                }
+            }
+            toggleAdminBtn.addEventListener('click', () => {
+                soundSynth.playClick();
+                if (!isAdminMode) { document.getElementById('admin-pwd-input').value = ''; authModal.classList.remove('hidden'); setTimeout(() => document.getElementById('admin-pwd-input').focus(), 100); } 
+                else { isAdminMode = false; showToast("已退出馆长模式"); updateAdminUI(); }
+            });
+            document.getElementById('cancel-auth-btn').addEventListener('click', () => { soundSynth.playClick(); authModal.classList.add('hidden'); });
+            document.getElementById('confirm-auth-btn').addEventListener('click', () => {
+                soundSynth.playClick();
+                if (document.getElementById('admin-pwd-input').value === 'admin') { isAdminMode = true; authModal.classList.add('hidden'); showToast("高级权限已开启", "success"); updateAdminUI(); } 
+                else { showToast("授权码错误", "error"); document.getElementById('admin-pwd-input').value = ''; }
+            });
+
+            document.getElementById('replay-landing-btn').addEventListener('click', () => {
+                soundSynth.playClick();
+                forceReturnToLanding();
+            });
+
+            // 控制台 UI 管理
+            const configModal = document.getElementById('config-modal');
+            document.getElementById('open-config-btn').addEventListener('click', () => {
+                soundSynth.playClick();
+                document.getElementById('cfg-landing-tag').value = document.getElementById('landing-museum-tag').innerText.trim();
+                document.getElementById('cfg-landing-title').value = document.getElementById('landing-main-title').innerText.trim();
+                document.getElementById('cfg-landing-sub').value = document.getElementById('landing-sub-title').innerText.trim();
+                document.getElementById('cfg-landing-desc').value = document.getElementById('landing-desc').innerText.trim();
+                document.getElementById('cfg-header-title').value = document.getElementById('header-main-title').innerText.trim();
+                document.getElementById('cfg-footer-text').value = document.getElementById('footer-copyright-text').innerText.trim();
+                
+                document.getElementById('cfg-bgm-volume').value = bgmConfig.volume * 100; document.getElementById('cfg-bgm-pitch').value = bgmConfig.proceduralPitch;
+                if(bgmConfig.mode === 'procedural') { document.getElementById('bgm-type-procedural').checked = true; document.getElementById('cfg-procedural-params').classList.remove('hidden'); document.getElementById('cfg-custom-params').classList.add('hidden'); } 
+                else { document.getElementById('bgm-type-custom').checked = true; document.getElementById('cfg-procedural-params').classList.add('hidden'); document.getElementById('cfg-custom-params').classList.remove('hidden'); }
+                renderCategoriesUI(); configModal.classList.remove('hidden');
+            });
+
+            function renderCategoriesUI() {
+                const list = document.getElementById('cfg-categories-list'); list.innerHTML = '';
+                window.appCategories.forEach((cat, idx) => {
+                    const badge = document.createElement('div'); badge.className = "flex items-center gap-1 bg-emerald-950/50 text-emerald-300 border border-emerald-800/50 px-2 py-1 rounded shadow-sm";
+                    badge.innerHTML = `<span>${cat}</span><button class="text-red-400 hover:text-red-300 ml-1 interactive-element transition" data-idx="${idx}"><i class="fa-solid fa-xmark"></i></button>`;
+                    badge.querySelector('button').addEventListener('click', (e) => {
+                        soundSynth.playClick(); const deletedCat = window.appCategories[e.currentTarget.dataset.idx]; window.appCategories.splice(e.currentTarget.dataset.idx, 1);
+                        masksData.forEach(m => { if(m.materialType === deletedCat) m.materialType = '未分类'; }); renderCategoriesUI(); updateFilterOptions(); showToast(`删除了大厅: ${deletedCat}`, "error");
+                    }); list.appendChild(badge);
+                });
+                const subList = document.getElementById('cfg-subcategories-list'); subList.innerHTML = '';
+                window.appSubCategories.forEach((sub, idx) => {
+                    const badge = document.createElement('div'); badge.className = "flex items-center gap-1 bg-blue-950/50 text-blue-300 border border-blue-800/50 px-2 py-1 rounded shadow-sm";
+                    badge.innerHTML = `<span>${sub}</span><button class="text-red-400 hover:text-red-300 ml-1 interactive-element transition" data-idx="${idx}"><i class="fa-solid fa-xmark"></i></button>`;
+                    badge.querySelector('button').addEventListener('click', (e) => {
+                        soundSynth.playClick(); const deletedSub = window.appSubCategories[e.currentTarget.dataset.idx]; window.appSubCategories.splice(e.currentTarget.dataset.idx, 1);
+                        masksData.forEach(m => { if(m.subCategory === deletedSub) m.subCategory = '未分类'; }); renderCategoriesUI(); updateFilterOptions(); showToast(`删除了子类: ${deletedSub}`, "error");
+                        if (currentSubCategoryFilter === deletedSub) currentSubCategoryFilter = 'all'; renderSubCategoryTabs(); renderGallery();
+                    }); subList.appendChild(badge);
+                });
+            }
+
+            document.getElementById('cfg-add-category-btn').addEventListener('click', () => {
+                soundSynth.playClick(); const input = document.getElementById('cfg-new-category'), val = input.value.trim();
+                if(val && !window.appCategories.includes(val)) { window.appCategories.push(val); input.value = ''; renderCategoriesUI(); updateFilterOptions(); showToast(`新增大厅: ${val}`, "success"); }
+            });
+            
+            document.getElementById('cfg-add-subcategory-btn').addEventListener('click', () => {
+                soundSynth.playClick(); const input = document.getElementById('cfg-new-subcategory'), val = input.value.trim();
+                if(val && !window.appSubCategories.includes(val)) { window.appSubCategories.push(val); input.value = ''; renderCategoriesUI(); updateFilterOptions(); showToast(`新增子类: ${val}`, "success"); }
+            });
+
+            document.getElementsByName('bgm-type').forEach(radio => radio.addEventListener('change', (e) => {
+                if(e.target.value === 'procedural') { document.getElementById('cfg-procedural-params').classList.remove('hidden'); document.getElementById('cfg-custom-params').classList.add('hidden'); } 
+                else { document.getElementById('cfg-procedural-params').classList.add('hidden'); document.getElementById('cfg-custom-params').classList.remove('hidden'); }
+            }));
+            document.getElementById('cfg-custom-audio-upload').addEventListener('change', (e) => { const file = e.target.files[0]; if(file) { customAudioPlayer.src = URL.createObjectURL(file); showToast("本地音乐加载成功", "success"); } });
+            document.getElementById('close-config-btn').addEventListener('click', () => configModal.classList.add('hidden')); document.getElementById('cancel-config-btn').addEventListener('click', () => configModal.classList.add('hidden'));
+
+            document.getElementById('save-config-btn').addEventListener('click', () => {
+                soundSynth.playClick();
+                document.getElementById('landing-museum-tag').innerHTML = `<i class=\"fa-solid fa-building-columns mr-2\"></i>` + document.getElementById('cfg-landing-tag').value;
+                document.getElementById('landing-main-title').innerText = document.getElementById('cfg-landing-title').value; document.getElementById('landing-sub-title').innerText = document.getElementById('cfg-landing-sub').value;
+                document.getElementById('landing-desc').innerHTML = document.getElementById('cfg-landing-desc').value.replace(/\n/g, '<br>'); document.getElementById('header-main-title').innerText = document.getElementById('cfg-header-title').value;
+                document.getElementById('footer-copyright-text').innerText = document.getElementById('cfg-footer-text').value; document.getElementById('landing-watermark').innerText = document.getElementById('cfg-footer-text').value;
+
+                bgmConfig.mode = document.querySelector('input[name="bgm-type"]:checked').value; bgmConfig.volume = parseInt(document.getElementById('cfg-bgm-volume').value) / 100; bgmConfig.proceduralPitch = parseInt(document.getElementById('cfg-bgm-pitch').value);
+                const wasPlaying = isMusicPlaying; if(wasPlaying) stopGlobalMusic();
+                if(bgmConfig.mode === 'procedural') { proceduralBGM.setMasterVolume(bgmConfig.volume); proceduralBGM.setPitch(bgmConfig.proceduralPitch); } else customAudioPlayer.volume = bgmConfig.volume;
+                if(wasPlaying) setTimeout(() => { playGlobalMusic(); }, 100);
+                configModal.classList.add('hidden'); showToast("配置已更新生效！", "success");
+            });
+
+            document.getElementById('preview-landing-btn').addEventListener('click', () => {
+                soundSynth.playClick(); configModal.classList.add('hidden'); 
+                forceReturnToLanding();
+            });
+
+            document.getElementById('enter-exhibition-btn').addEventListener('click', () => {
+                soundSynth.playEntrance(); 
+                const landingScreen = document.getElementById('landing-screen'); 
+                landingScreen.classList.add('opacity-0', 'scale-110', 'pointer-events-none');
+                
+                document.getElementById('category-selection-view').classList.remove('hidden'); 
+                document.getElementById('main-gallery').classList.add('hidden');
+                
+                // 🌟 先移除 hidden 占据物理空间，再移除 fade-out 触发淡入动画
+                document.getElementById('main-header').classList.remove('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+                document.getElementById('main-footer').classList.remove('hidden');
+                
+                setTimeout(() => { 
+                    document.getElementById('main-header').classList.remove('fade-out'); 
+                    document.getElementById('main-content').classList.remove('fade-out'); 
+                    document.getElementById('main-footer').classList.remove('fade-out'); 
+                }, 50);
+                
+                if (!isMusicPlaying) playGlobalMusic(); 
+                setTimeout(() => { landingScreen.classList.add('hidden'); showToast("✨ 欢迎进入数字大厅", "success"); }, 1000); 
+                
+                isAtLandingPage = false;
+                clearTimeout(landingAnimTimer);
+                resetActivity();
+            });
+
+            document.getElementById('open-add-modal-btn').addEventListener('click', () => { soundSynth.playClick(); document.getElementById('add-modal').classList.remove('hidden'); });
+            document.getElementById('cancel-add').addEventListener('click', () => { soundSynth.playClick(); document.getElementById('add-modal').classList.add('hidden'); });
+            document.getElementById('save-add-btn').addEventListener('click', () => {
+                soundSynth.playClick();
+                const name = document.getElementById('add-name').value || '未命名藏品', cat = document.getElementById('add-category').value || '自定义大厅', subCat = document.getElementById('add-subcategory').value || '自定义子类'; 
+                const imgFile = document.getElementById('add-image').files[0], objFile = document.getElementById('add-obj').files[0], mtlFile = document.getElementById('add-mtl').files[0], texFile = document.getElementById('add-texture').files[0]; 
+                if (!imgFile) return showToast("请上传封面图片！", "error");
+                
+                let objUrl = null, mtlUrl = null, texUrl = null;
+                if(objFile) objUrl = URL.createObjectURL(objFile); if(mtlFile) mtlUrl = URL.createObjectURL(mtlFile); if(texFile) texUrl = URL.createObjectURL(texFile); 
+                
+                masksData.push({
+                    id: Date.now(), serial: `Nuo-New-${Math.floor(Math.random()*9000)+1000}`, name: name, materialType: cat, subCategory: subCat,
+                    image: URL.createObjectURL(imgFile), objUrl: objUrl, mtlUrl: mtlUrl, textureUrl: texUrl, era: '现代导入', location: '馆藏库', spec: '自适应', description: document.getElementById('add-desc').value || ''
+                });
+                document.getElementById('add-modal').classList.add('hidden'); updateFilterOptions(); 
+                const currentFilter = document.getElementById('material-filter').value;
+                if(currentFilter === 'all' || currentFilter === cat) { renderSubCategoryTabs(); renderGallery(); }
+                showToast("成功追加至秘宝阁末尾！", "success");
+            });
+            
+            document.getElementById('change-texture-btn').addEventListener('click', () => { soundSynth.playClick(); document.getElementById('change-texture-input').click(); });
+            document.getElementById('change-texture-input').addEventListener('change', (e) => {
+                const file = e.target.files[0]; if (!file) return;
+                const newTexUrl = URL.createObjectURL(file); masksData[activeMaskIndex].textureUrl = newTexUrl; 
+                if (typeof currentModel !== 'undefined' && currentModel) {
+                    new THREE.TextureLoader().load(newTexUrl, (texture) => {
+                        texture.encoding = THREE.sRGBEncoding; currentModel.traverse((child) => { if (child.isMesh) { if(child.material.map) child.material.map.dispose(); child.material.map = texture; child.material.needsUpdate = true; } });
+                        document.getElementById('interaction-hint').innerHTML = `<i class="fa-solid fa-cube text-emerald-400"></i> 当前为全息 3D 模式 (已实时更新贴图)`; showToast("贴图更换成功，AR内也会同步生效！", "success");
+                    });
+                }
+            });
+
+            document.getElementById('edit-mask-btn').addEventListener('click', () => {
+                soundSynth.playClick(); const mask = masksData[activeMaskIndex];
+                document.getElementById('edit-name').value = mask.name; document.getElementById('edit-subcategory').value = mask.subCategory || ''; document.getElementById('edit-era').value = mask.era; document.getElementById('edit-desc').value = mask.description;
+                document.getElementById('editor-modal').classList.remove('hidden');
+            });
+            document.getElementById('cancel-edit').addEventListener('click', () => document.getElementById('editor-modal').classList.add('hidden'));
+            document.getElementById('save-edit').addEventListener('click', () => {
+                soundSynth.playClick(); const mask = masksData[activeMaskIndex];
+                mask.name = document.getElementById('edit-name').value; mask.subCategory = document.getElementById('edit-subcategory').value || '未分类'; mask.era = document.getElementById('edit-era').value; mask.description = document.getElementById('edit-desc').value;
+                document.getElementById('editor-modal').classList.add('hidden'); selectMask(activeMaskIndex); updateFilterOptions(); renderSubCategoryTabs(); renderGallery(); showToast("信息已更新");
+            });
+
+            document.getElementById('batch-cat-btn').addEventListener('click', () => { soundSynth.playClick(); if(isBatchSelectMode){ isBatchSelectMode=false; document.getElementById('batch-action-bar').classList.add('hidden'); } else { isBatchSelectMode=true; selectedMaskIndices=[]; document.getElementById('batch-action-bar').classList.remove('hidden'); document.getElementById('batch-count').innerText='0'; } renderGallery(); });
+            document.getElementById('batch-cancel-btn').addEventListener('click', () => { soundSynth.playClick(); isBatchSelectMode=false; selectedMaskIndices=[]; document.getElementById('batch-action-bar').classList.add('hidden'); renderGallery(); });
+            document.getElementById('batch-confirm-btn').addEventListener('click', () => { 
+                soundSynth.playClick(); const newMainCat = document.getElementById('batch-category-input').value.trim(); const newSubCat = document.getElementById('batch-subcategory-input').value.trim(); 
+                if((!newMainCat && !newSubCat) || selectedMaskIndices.length===0) return showToast("请填写要修改的大厅或子类名称", "error"); 
+                selectedMaskIndices.forEach(i => { if(newMainCat) masksData[i].materialType = newMainCat; if(newSubCat) masksData[i].subCategory = newSubCat; }); 
+                isBatchSelectMode=false; selectedMaskIndices=[]; document.getElementById('batch-action-bar').classList.add('hidden'); updateFilterOptions(); 
+                if (newMainCat) document.getElementById('material-filter').value = newMainCat; renderSubCategoryTabs(); renderGallery(); showToast("批量归类成功","success"); 
+            });
+            
+            // 🌟 修复：重写批量选择切换方法，抛弃全量重绘，改为定点 CSS 样式切换
+            function toggleBatchSelection(idx) {
+                soundSynth.playClick();
+                const p = selectedMaskIndices.indexOf(idx);
+                const gridItem = document.querySelector(`#mask-grid div[data-index="${idx}"]`);
+                
+                if (p > -1) {
+                    // 取消选中：动态移除高亮状态，并还原默认深色边框状态
+                    selectedMaskIndices.splice(p, 1);
+                    if (gridItem) {
+                        gridItem.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-900/50', 'scale-95', 'shadow-[0_0_20px_rgba(59,130,246,0.6)]');
+                        gridItem.classList.add('border-stone-800/80', 'bg-gradient-to-b', 'from-stone-900/40', 'to-[#0b0c10]', 'hover:border-amber-500/50', 'hover:-translate-y-1', 'md:hover:-translate-y-2', 'hover:shadow-[0_15px_40px_rgba(245,158,11,0.2)]');
+                        const checkIcon = gridItem.querySelector('.check-icon');
+                        if (checkIcon) {
+                            checkIcon.classList.remove('opacity-100');
+                            checkIcon.classList.add('opacity-0');
+                        }
+                    }
+                } else {
+                    // 激活选中：移除默认边框状态，注入发光蓝环高亮状态
+                    selectedMaskIndices.push(idx);
+                    if (gridItem) {
+                        gridItem.classList.add('ring-2', 'ring-blue-500', 'bg-blue-900/50', 'scale-95', 'shadow-[0_0_20px_rgba(59,130,246,0.6)]');
+                        gridItem.classList.remove('border-stone-800/80', 'bg-gradient-to-b', 'from-stone-900/40', 'to-[#0b0c10]', 'hover:border-amber-500/50', 'hover:-translate-y-1', 'md:hover:-translate-y-2', 'hover:shadow-[0_15px_40px_rgba(245,158,11,0.2)]');
+                        const checkIcon = gridItem.querySelector('.check-icon');
+                        if (checkIcon) {
+                            checkIcon.classList.remove('opacity-0');
+                            checkIcon.classList.add('opacity-100');
+                        }
+                    }
+                }
+                
+                // 仅更新底部操作台的计数器
+                document.getElementById('batch-count').innerText = selectedMaskIndices.length; 
+            }
+
+            // --- 手势识别引擎 ---
+            const toggleCameraBtn = document.getElementById('toggle-camera-btn');
+            async function initializeHandsDetection() {
+                statusText.innerText = "激活 AI 视觉..."; statusDot.className = "w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-amber-500 animate-pulse";
+                
+                try {
+                    const hands = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+                    
+                    // 🌟 防干扰升级 1：大幅提升追踪与检测置信度，强迫 AI 忽略模糊的背景手，只锁定最近最清晰的主力手
+                    hands.setOptions({ 
+                        maxNumHands: 1, 
+                        modelComplexity: 1, 
+                        minDetectionConfidence: 0.85, 
+                        minTrackingConfidence: 0.90 
+                    });
+                    hands.onResults(onHandResults);
+                    
+                    // 🌟 核心修复：依次初始化模型，防止 WebAssembly (WASM) 命名空间冲突导致 RuntimeError: Aborted
+                    await hands.initialize();
+                    await initFaceMesh();
+                    
+                    const cam = new Camera(videoElement, {
+                        onFrame: async () => { 
+                            try { 
+                                if (videoElement.readyState >= 2) {
+                                    await hands.send({ image: videoElement }); 
+                                    if(isARMode && typeof faceMesh !== 'undefined' && faceMesh) { 
+                                        await faceMesh.send({ image: videoElement }); 
+                                    } 
+                                }
+                            } catch (e) { console.warn("AI 视觉模型准备中...", e); } 
+                        },
+                        width: 640, height: 480 
+                    });
+                    
+                    cam.start().then(() => { 
+                        cameraActive = true; 
+                        statusText.innerText = "智能追踪运行中"; 
+                        statusDot.className = "w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500"; 
+                        cursorEl.classList.remove('hidden'); 
+                    }).catch(e => { statusText.innerText = "摄像头错误"; });
+                } catch(e) {
+                    console.error("AI 模型加载失败", e);
+                    statusText.innerText = "加载失败";
+                }
+            }
+
+            function getDistance(pt1, pt2) { return Math.sqrt(Math.pow(pt1.x - pt2.x, 2) + Math.pow(pt1.y - pt2.y, 2)); }
+            
+            function onHandResults(results) {
+                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                const isLandingActive = !document.getElementById('landing-screen').classList.contains('opacity-0');
+
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    const landmarks = results.multiHandLandmarks[0]; 
+                    
+                    // 🌟 防干扰升级 2：Z轴景深（物理尺寸）过滤器
+                    // 计算手腕(0)到中指尖(12)的归一化距离。主操作者的手离屏幕近占比大(>0.2)，后方围观群众的手很小(<0.15)
+                    const wristRaw = landmarks[0];
+                    const middleTip = landmarks[12];
+                    const handSize = getDistance(wristRaw, middleTip);
+                    
+                    // 如果手部比例小于 15%，系统自动判定为后方干扰人群，直接丢弃该帧数据
+                    if (handSize < 0.15) {
+                        return; 
+                    }
+
+                    // 🌟 防干扰升级 3：瞬移防抖锁 (Spatial Jump Lock)
+                    // 防止 AI 焦点瞬间从主操作者跳跃到旁观者手上，引发画面展品和光标乱甩
+                    if (lastWristRaw) {
+                        const jumpDist = getDistance(wristRaw, lastWristRaw);
+                        if (jumpDist > 0.35) { // 如果一瞬间发生屏幕宽度 35% 以上的跳跃位移
+                            lastWristRaw = wristRaw; // 记录新位置
+                            handPrevX = null; handPrevY = null; // 打断拖拽平滑过渡和模型旋转
+                            return; // 抛弃该帧渲染，等待焦点稳定
+                        }
+                    }
+                    lastWristRaw = wristRaw;
+
+                    resetActivity(); // 📸 手势活动触发防空闲机制重置
+
+                    overlayCtx.fillStyle = '#e5c583'; overlayCtx.strokeStyle = 'rgba(229, 197, 131, 0.6)'; overlayCtx.lineWidth = 3;
+                    const connections = [[0,1], [1,2], [2,3], [3,4], [0,5], [5,6], [6,7], [7,8], [5,9], [9,10], [10,11], [11,12], [9,13], [13,14], [14,15], [15,16], [13,17], [17,18], [18,19], [19,20], [0,17]];
+                    connections.forEach(([p1, p2]) => { overlayCtx.beginPath(); overlayCtx.moveTo(landmarks[p1].x * overlayCanvas.width, landmarks[p1].y * overlayCanvas.height); overlayCtx.lineTo(landmarks[p2].x * overlayCanvas.width, landmarks[p2].y * overlayCanvas.height); overlayCtx.stroke(); });
+                    landmarks.forEach(pt => { overlayCtx.beginPath(); overlayCtx.arc(pt.x * overlayCanvas.width, pt.y * overlayCanvas.height, 4, 0, Math.PI * 2); overlayCtx.fill(); });
+
+                    const palmJoint = landmarks[5], margin = 0.15; 
+                    const mappedX = (1 - (palmJoint.x - margin) / (1 - 2 * margin)) * window.innerWidth;
+                    const mappedY = ((palmJoint.y - margin) / (1 - 2 * margin)) * window.innerHeight;
+                    const sensVal = parseInt(document.getElementById('sensitivity-slider').value) / 100;
+                    
+                    targetCursorX = Math.max(0, Math.min(window.innerWidth, mappedX)); targetCursorY = Math.max(0, Math.min(window.innerHeight, mappedY));
+                    cursorX += (targetCursorX - cursorX) * sensVal; cursorY += (targetCursorY - cursorY) * sensVal;
+                    cursorEl.style.left = `${cursorX}px`; cursorEl.style.top = `${cursorY}px`;
+                    
+                    const wrist = landmarks[0], fingerTips = [4, 8, 12, 16, 20];
+                    let totalDist = 0; fingerTips.forEach(tipIdx => totalDist += getDistance(landmarks[tipIdx], wrist));
+                    
+                    const isFist = totalDist < 1.05; 
+                    const isHandOpen = totalDist > 1.45; 
+                    
+                    if (isARMode) {
+                        checkHoverCollision(cursorX, cursorY, isLandingActive);
+                        if (isFist) { if (currentHoveredElement && currentHoveredElement.id === 'exit-ar-btn') { isFistAction = true; cursorEl.classList.add('fist'); handleGestureClick(currentHoveredElement); return; } if (arShutterState === 1) { arShutterState = 0; takeARPhoto(); } }
+                        if (isHandOpen) { arShutterState = 1; cursorEl.style.borderColor = "#10b981"; } else cursorEl.style.borderColor = "#e5c583";
+                        return; 
+                    }
+                    
+                    let activeScrollContainer = null;
+                    if (!isLandingActive) {
+                        if (!document.getElementById('category-selection-view').classList.contains('hidden')) activeScrollContainer = document.getElementById('category-cards-container');
+                        else if (!document.getElementById('main-gallery').classList.contains('hidden') && !isBatchSelectMode) activeScrollContainer = document.getElementById('mask-grid');
+                    }
+
+                    if (isFist) { 
+                        if (!isFistAction) { 
+                            isFistAction = true; cursorEl.classList.add('fist'); possibleClickElement = currentHoveredElement; 
+                            if (activeScrollContainer) { isDraggingScroll = true; dragStartCursorY = cursorY; dragStartCursorX = cursorX; dragStartScrollY = activeScrollContainer.scrollTop; activeScrollContainer.style.scrollBehavior = 'auto'; }
+                        } else if (isDraggingScroll && activeScrollContainer) { 
+                            let dy = cursorY - dragStartCursorY; 
+                            let dx = cursorX - dragStartCursorX;
+                            if (Math.abs(dy) > 15 || Math.abs(dx) > 15) possibleClickElement = null; 
+                            
+                            let dest = dragStartScrollY - dy * 2.5;
+                            const maxScroll = activeScrollContainer.scrollHeight - activeScrollContainer.clientHeight;
+                            activeScrollContainer.scrollTop = Math.max(0, Math.min(dest, maxScroll));
+                        }
+                    } else {
+                        if (isFistAction) { 
+                            isFistAction = false; cursorEl.classList.remove('fist'); 
+                            if (possibleClickElement && currentHoveredElement === possibleClickElement) handleGestureClick(possibleClickElement);
+                            possibleClickElement = null;
+                            if (isDraggingScroll) { isDraggingScroll = false; if (activeScrollContainer) activeScrollContainer.style.scrollBehavior = 'smooth'; } 
+                        }
+                        if (activeMaskIndex !== null && !isLandingActive) {
+                            if (handPrevX !== null && handPrevY !== null) {
+                                let dx = cursorX - handPrevX, dy = cursorY - handPrevY;
+                                targetRotationY += dx * 0.02 * sensVal * 2; targetRotationX += dy * 0.02 * sensVal * 2; 
+                                targetRotationX = Math.max(-1.2, Math.min(1.2, targetRotationX)); targetRotationY = Math.max(-1.5, Math.min(1.5, targetRotationY));
+                            }
+                            handPrevX = cursorX; handPrevY = cursorY;
+                        }
+                    }
+                    if (!isFist && !isARMode) checkHoverCollision(cursorX, cursorY, isLandingActive);
+                } else { 
+                    handPrevX = null; 
+                    handPrevY = null; 
+                    lastWristRaw = null; // 🌟 视野内完全无手时，重置跳跃锁
+                    arShutterState = 0; 
+                }
+            }
+
+            function checkHoverCollision(x, y, isLandingActive) {
+                if (x < 0 || x > window.innerWidth || y < 0 || y > window.innerHeight) {
+                    if (currentHoveredElement) { currentHoveredElement.classList.remove('scale-105', 'border-amber-400'); currentHoveredElement = null; }
+                    return;
+                }
+                
+                const elements = document.elementsFromPoint(x, y);
+                const target = elements.find(el => {
+                    const isInteractive = el.classList.contains('interactive-element') || el.id === 'back-btn' || el.id === 'back-to-categories-btn';
+                    if (isInteractive && isLandingActive) return document.getElementById('landing-screen').contains(el);
+                    return isInteractive;
+                });
+                if (target) {
+                    if (currentHoveredElement !== target) {
+                        if (currentHoveredElement) currentHoveredElement.classList.remove('scale-105', 'border-amber-400');
+                        currentHoveredElement = target; currentHoveredElement.classList.add('scale-105', 'border-amber-400'); soundSynth.playHover();
+                    }
+                } else { 
+                    if (currentHoveredElement) { currentHoveredElement.classList.remove('scale-105', 'border-amber-400'); currentHoveredElement = null; } 
+                }
+            }
+
+            function handleGestureClick(targetEl) {
+                if (targetEl) {
+                    if (targetEl.classList.contains('interactive-element')) {
+                        if (targetEl.dataset.index !== undefined) { if (isBatchSelectMode) toggleBatchSelection(parseInt(targetEl.dataset.index)); else selectMask(parseInt(targetEl.dataset.index)); } 
+                        else targetEl.click();
+                    } else if (targetEl.id === 'back-btn') goBackToGallery();
+                    else if (targetEl.id === 'back-to-categories-btn') document.getElementById('back-to-categories-btn').click();
+                    else if (targetEl.id === 'close-postcard-btn') document.getElementById('close-postcard-btn').click();
+                    else if (targetEl.id === 'download-postcard-btn') document.getElementById('download-postcard-btn').click();
+                    
+                    targetEl.classList.remove('scale-105', 'border-amber-400'); 
+                    if (currentHoveredElement === targetEl) currentHoveredElement = null;
+                }
+            }
+
+            toggleCameraBtn.addEventListener('click', () => {
+                soundSynth.playClick();
+                if (!cameraActive) { initializeHandsDetection(); toggleCameraBtn.innerHTML = `<i class=\"fa-solid fa-power-off\"></i> <span class="hidden md:inline">关闭手势</span>`; toggleCameraBtn.classList.replace('bg-amber-600', 'bg-red-700'); toggleCameraBtn.classList.replace('hover:bg-amber-500', 'hover:bg-red-800'); toggleCameraBtn.classList.add('text-white'); } 
+                else location.reload();
+            });
+
+            // --- 真正的初始化执行入口 ---
+            initThreeJS(); 
+            generate90Masks(); 
+            updateAdminUI(); 
+            updateFilterOptions(); 
+            renderGallery();
+            resizeCanvas(); 
+            initParticles(); 
+            animateRender(); 
+            
+            setTimeout(() => {
+                if (!cameraActive) { 
+                    initializeHandsDetection(); 
+                    toggleCameraBtn.innerHTML = `<i class=\"fa-solid fa-power-off\"></i> <span class="hidden md:inline">关闭追踪</span>`; 
+                    toggleCameraBtn.classList.replace('bg-amber-600', 'bg-red-700'); 
+                    toggleCameraBtn.classList.add('text-white'); 
+                }
+            }, 500); 
+
+            // 启动一次看门狗状态
+            resetActivity();
+            // 在主页开启初始的巡航动画
+            triggerLandingAnimationLoop();
+
+        }); // 结束 DOMContentLoaded
+    </script>
+</body>
+</html>

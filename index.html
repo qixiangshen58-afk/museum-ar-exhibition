@@ -1484,7 +1484,13 @@
                     if (jsonData.masksData && Array.isArray(jsonData.masksData)) {
                         masksData = jsonData.masksData;
                         // 为数据补充必需的系统 id 索引
-                        masksData.forEach((m, idx) => { if(!m.id) m.id = idx; });
+                        masksData.forEach((m, idx) => { 
+                            if(!m.id) m.id = idx; 
+                            // 🌟 新增：智能补全残缺的图片路径
+                            if (m.image && !m.image.includes('/') && !m.image.startsWith('blob:') && !m.image.startsWith('data:')) {
+                                m.image = './images/' + m.image;
+                            }
+                        });
                     }
 
                 } catch (e) {
@@ -1501,7 +1507,7 @@
                     const mainCat = keys[i % keys.length];
                     const subCats = hallMap[mainCat];
                     const subCat = subCats[i % subCats.length];
-                    let currentImage = `${(i % 9) + 1}.jpg`;
+                    let currentImage = `./images/${(i % 9) + 1}.jpg`;
                     let nameTemplate = mainCat === '古代面具馆' ? "通神木面" : mainCat === '古代服饰馆' ? "织锦古袍" : mainCat === '古代家具馆' ? "祥云太师椅" : "祈福延年匾";
 
                     masksData.push({

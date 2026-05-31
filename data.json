@@ -1,0 +1,41 @@
+{
+  "siteConfig": {
+    "tag": "贺州文化博物馆 · AI 数字化特展",
+    "mainTitle": "上古遗音",
+    "subTitle": "全息文物 AI 交互特展",
+    "description": "跨越千年的神秘祭祀，凝固于木石之上的生灵低语。\n结合原生 Gemini AI 与 3D 空间追踪技术，开启一场与远古华夏先民的隔空对话。\n在无接触的交互中，感受贺州本土傩戏与古老民俗的璀璨神韵。",
+    "footerText": "© 2026 贺州文化博物馆 - AI 交互特展智能系统"
+  },
+  "masksData": [
+    {
+      "id": 1,
+      "serial": "Art-001",
+      "name": "第一件展品名称",
+      "materialType": "古代面具馆",
+      "subCategory": "有色面具",
+      "image": "./images/1.jpg",
+      "objUrl": null,
+      "mtlUrl": null,
+      "textureUrl": null,
+      "era": "明清时期",
+      "location": "广西贺州",
+      "spec": "高25cm 宽18cm",
+      "description": "这是关于第一件展品的详细介绍，游客点开详情或者生成明信片时会看到这段话。"
+    },
+    {
+      "id": 2,
+      "serial": "Art-002",
+      "name": "第二件展品名称",
+      "materialType": "古代面具馆",
+      "subCategory": "无色面具",
+      "image": "./images/2.jpg",
+      "objUrl": null,
+      "mtlUrl": null,
+      "textureUrl": null,
+      "era": "唐代",
+      "location": "中国西南",
+      "spec": "自适应规格",
+      "description": "这是第二件展品的详细介绍，它的图片读取的是 images 文件夹下的 2.jpg。"
+    }
+  ]
+}

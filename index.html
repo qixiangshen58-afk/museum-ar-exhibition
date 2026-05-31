@@ -155,7 +155,7 @@
 
         <div class="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-4xl">
             <div id="landing-museum-tag" class="animate-reveal text-amber-500/90 text-[10px] md:text-sm tracking-[0.3em] md:tracking-[0.5em] mb-6 md:mb-8 border border-amber-500/30 px-6 py-2 md:px-8 md:py-2.5 rounded-full bg-black/40 backdrop-blur-md shadow-[0_0_20px_rgba(245,158,11,0.15)] whitespace-nowrap" style="animation-delay: 0.2s;">
-                <i class="fa-solid fa-building-columns mr-2"></i>贺州文化博物馆 · AI 数字化特展
+                <span id="display-tag"><i class="fa-solid fa-building-columns mr-2"></i>贺州文化博物馆 · AI 数字化特展</span>
             </div>
             
             <h1 id="landing-main-title" class="animate-reveal text-5xl sm:text-7xl md:text-9xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-amber-50 via-amber-300 to-amber-700 mb-4 md:mb-6 tracking-widest drop-shadow-2xl accent-text" style="animation-delay: 0.5s; text-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);">
@@ -1452,7 +1452,40 @@
                 }
             }
 
-            // --- 数据生成 ---
+            // 🌟 核心更新：使用 fetch 读取外部 data.json
+            async function loadExhibitionData() {
+                try {
+                    // 尝试从同级目录加载 data.json
+                    const response = await fetch('./data.json');
+                    if (!response.ok) throw new Error("Local data.json not found");
+                    const jsonData = await response.json();
+
+                    // 1. 覆盖全局 UI 文字配置
+                    if (jsonData.siteConfig) {
+                        if (jsonData.siteConfig.tag) document.getElementById('landing-museum-tag').innerHTML = `<i class="fa-solid fa-building-columns mr-2"></i>` + jsonData.siteConfig.tag;
+                        if (jsonData.siteConfig.mainTitle) document.getElementById('landing-main-title').innerText = jsonData.siteConfig.mainTitle;
+                        if (jsonData.siteConfig.subTitle) document.getElementById('landing-sub-title').innerText = jsonData.siteConfig.subTitle;
+                        if (jsonData.siteConfig.description) document.getElementById('landing-desc').innerHTML = jsonData.siteConfig.description.replace(/\n/g, '<br>');
+                        if (jsonData.siteConfig.footerText) {
+                            document.getElementById('footer-copyright-text').innerText = jsonData.siteConfig.footerText;
+                            document.getElementById('landing-watermark').innerText = jsonData.siteConfig.footerText;
+                        }
+                    }
+
+                    // 2. 加载真实的藏品数据
+                    if (jsonData.masksData && Array.isArray(jsonData.masksData)) {
+                        masksData = jsonData.masksData;
+                        // 为数据补充必需的系统 id 索引
+                        masksData.forEach((m, idx) => { if(!m.id) m.id = idx; });
+                    }
+
+                } catch (e) {
+                    console.warn("未能加载外部 data.json (可能文件不存在或跨域拦截)，退回演示数据模式", e);
+                    // 如果没找到 JSON 或者运行在本地 file:// 协议，就使用演示数据防白屏
+                    generate90Masks();
+                }
+            }
+
             function generate90Masks() {
                 if (masksData.length > 0) return; 
                 const keys = Object.keys(hallMap);
@@ -1484,6 +1517,7 @@
 
                 const createBtn = (text, filterVal, index) => {
                     const btn = document.createElement('button');
+                    // 🌟 修改点：修改 padding 和文字大小，增加 shrink-0 和 whitespace-nowrap 适配移动端横向滑动
                     btn.className = `interactive-element animate-fade-in-up px-4 py-1.5 md:px-5 md:py-2 rounded-full text-[10px] md:text-xs font-bold tracking-widest transition-all duration-300 border shrink-0 whitespace-nowrap ${currentSubCategoryFilter === filterVal ? 'bg-amber-600 text-black border-amber-500 shadow-[0_0_15px_rgba(217,119,6,0.6)]' : 'bg-black/60 text-stone-400 border-stone-700/80 hover:text-amber-300 hover:border-amber-600/50 hover:bg-amber-950/40'}`;
                     btn.style.animationDelay = `${index * 0.05}s`; 
                     btn.innerText = text;
@@ -1504,6 +1538,7 @@
                 let cardIndex = 0; 
 
                 const allCard = document.createElement('div');
+                // 🌟 修改点：高度调整 h-[200px] md:h-[320px]，文字缩小
                 allCard.className = "interactive-element animate-fade-in-up animate-float group relative h-[200px] md:h-[320px] rounded-2xl md:rounded-3xl overflow-hidden border border-amber-500/40 cursor-pointer transform transition-all duration-500 hover:scale-105 hover:shadow-[0_30px_60px_rgba(245,158,11,0.25)] md:col-span-2 lg:col-span-2"; 
                 allCard.style.animationDelay = `${cardIndex * 0.1}s, 0s`; 
                 
@@ -1539,6 +1574,7 @@
                     const categoryMasks = masksData.filter(m => m.materialType === cat);
                     const coverImg = categoryMasks.length > 0 ? categoryMasks[0].image : '';
                     const card = document.createElement('div');
+                    // 🌟 修改点：高度调整 h-[180px] md:h-[320px]，文字缩小
                     card.className = "interactive-element animate-fade-in-up animate-float group relative h-[180px] md:h-[320px] rounded-2xl md:rounded-3xl overflow-hidden border border-stone-800 cursor-pointer transform transition-all duration-500 hover:scale-105 hover:border-amber-600/50 hover:shadow-[0_20px_50px_rgba(245,158,11,0.15)]";
                     card.style.animationDelay = `${cardIndex * 0.1}s, ${(cardIndex%3)*0.5}s`; 
                     
@@ -1600,6 +1636,7 @@
                     filteredCount++;
                     const isSelected = selectedMaskIndices.includes(index);
                     const item = document.createElement('div');
+                    // 🌟 修改点：卡片内边距缩小，图片高度限制调整，文字尺寸适配
                     item.className = `group animate-fade-in-up relative aspect-[3/4] flex flex-col items-center justify-between p-3 md:p-5 rounded-xl md:rounded-2xl border cursor-pointer transition-all transform duration-500 interactive-element ${isSelected ? 'ring-2 ring-blue-500 bg-blue-900/50 scale-95 shadow-[0_0_20px_rgba(59,130,246,0.6)]' : 'border-stone-800/80 bg-gradient-to-b from-stone-900/40 to-[#0b0c10] hover:border-amber-500/50 hover:-translate-y-1 md:hover:-translate-y-2 hover:shadow-[0_15px_40px_rgba(245,158,11,0.2)]'}`;
                     item.style.animationDelay = `${renderIndex * 0.05}s`;
                     renderIndex++;
@@ -2546,29 +2583,31 @@
                 else location.reload();
             });
 
-            // --- 真正的初始化执行入口 ---
+            // --- 🌟 真正的初始化执行入口 🌟 ---
             initThreeJS(); 
-            generate90Masks(); 
-            updateAdminUI(); 
-            updateFilterOptions(); 
-            renderGallery();
-            resizeCanvas(); 
-            initParticles(); 
-            animateRender(); 
             
-            setTimeout(() => {
-                if (!cameraActive) { 
-                    initializeHandsDetection(); 
-                    toggleCameraBtn.innerHTML = `<i class=\"fa-solid fa-power-off\"></i> <span class="hidden md:inline">关闭追踪</span>`; 
-                    toggleCameraBtn.classList.replace('bg-amber-600', 'bg-red-700'); 
-                    toggleCameraBtn.classList.add('text-white'); 
-                }
-            }, 500); 
+            // 启动外部数据驱动加载
+            loadExhibitionData().then(() => {
+                updateAdminUI(); 
+                updateFilterOptions(); 
+                renderGallery();
+                resizeCanvas(); 
+                initParticles(); 
+                animateRender(); 
+                
+                // 延迟开启摄像头，保证界面优先加载完成
+                setTimeout(() => {
+                    if (!cameraActive) { 
+                        initializeHandsDetection(); 
+                        toggleCameraBtn.innerHTML = `<i class=\"fa-solid fa-power-off\"></i> <span class="hidden md:inline">关闭追踪</span>`; 
+                        toggleCameraBtn.classList.replace('bg-amber-600', 'bg-red-700'); 
+                        toggleCameraBtn.classList.add('text-white'); 
+                    }
+                }, 500); 
 
-            // 启动一次看门狗状态
-            resetActivity();
-            // 在主页开启初始的巡航动画
-            triggerLandingAnimationLoop();
+                resetActivity();
+                triggerLandingAnimationLoop();
+            });
 
         }); // 结束 DOMContentLoaded
     </script>

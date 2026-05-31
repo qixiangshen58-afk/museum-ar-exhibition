@@ -8,34 +8,54 @@
   },
   "masksData": [
     {
-      "id": 1,
-      "serial": "Art-001",
-      "name": "第一件展品名称",
-      "materialType": "古代面具馆",
-      "subCategory": "有色面具",
-      "image": "./images/1.jpg",
-      "objUrl": null,
-      "mtlUrl": null,
-      "textureUrl": null,
-      "era": "明清时期",
-      "location": "广西贺州",
-      "spec": "高25cm 宽18cm",
-      "description": "这是关于第一件展品的详细介绍，游客点开详情或者生成明信片时会看到这段话。"
+      "id": 1, "serial": "Art-001", "name": "展品一号", "materialType": "古代面具馆", "subCategory": "有色面具",
+      "image": "./images/1.jpg", "objUrl": null, "mtlUrl": null, "textureUrl": null,
+      "era": "明清时期", "location": "广西贺州", "spec": "自适应", "description": "这是第 1 件展品的详细介绍。"
     },
     {
-      "id": 2,
-      "serial": "Art-002",
-      "name": "第二件展品名称",
-      "materialType": "古代面具馆",
-      "subCategory": "无色面具",
-      "image": "./images/2.jpg",
-      "objUrl": null,
-      "mtlUrl": null,
-      "textureUrl": null,
-      "era": "唐代",
-      "location": "中国西南",
-      "spec": "自适应规格",
-      "description": "这是第二件展品的详细介绍，它的图片读取的是 images 文件夹下的 2.jpg。"
+      "id": 2, "serial": "Art-002", "name": "展品二号", "materialType": "古代面具馆", "subCategory": "无色面具",
+      "image": "./images/2.jpg", "objUrl": null, "mtlUrl": null, "textureUrl": null,
+      "era": "明清时期", "location": "广西贺州", "spec": "自适应", "description": "这是第 2 件展品的详细介绍。"
+    },
+    {
+      "id": 3, "serial": "Art-003", "name": "展品三号", "materialType": "古代面具馆", "subCategory": "祭祀傩面",
+      "image": "./images/3.jpg", "objUrl": null, "mtlUrl": null, "textureUrl": null,
+      "era": "明清时期", "location": "广西贺州", "spec": "自适应", "description": "这是第 3 件展品的详细介绍。"
+    },
+    {
+      "id": 4, "serial": "Art-004", "name": "展品四号", "materialType": "古代服饰馆", "subCategory": "祭司长袍",
+      "image": "./images/4.jpg", "objUrl": null, "mtlUrl": null, "textureUrl": null,
+      "era": "明清时期", "location": "广西贺州", "spec": "自适应", "description": "这是第 4 件展品的详细介绍。"
+    },
+    {
+      "id": 5, "serial": "Art-005", "name": "展品五号", "materialType": "古代服饰馆", "subCategory": "平民麻衣",
+      "image": "./images/5.jpg", "objUrl": null, "mtlUrl": null, "textureUrl": null,
+      "era": "明清时期", "location": "广西贺州", "spec": "自适应", "description": "这是第 5 件展品的详细介绍。"
+    },
+    {
+      "id": 6, "serial": "Art-006", "name": "展品六号", "materialType": "古代家具馆", "subCategory": "紫檀木椅",
+      "image": "./images/6.jpg", "objUrl": null, "mtlUrl": null, "textureUrl": null,
+      "era": "明清时期", "location": "广西贺州", "spec": "自适应", "description": "这是第 6 件展品的详细介绍。"
+    },
+    {
+      "id": 7, "serial": "Art-007", "name": "展品七号", "materialType": "古代家具馆", "subCategory": "黄花梨案",
+      "image": "./images/7.jpg", "objUrl": null, "mtlUrl": null, "textureUrl": null,
+      "era": "明清时期", "location": "广西贺州", "spec": "自适应", "description": "这是第 7 件展品的详细介绍。"
+    },
+    {
+      "id": 8, "serial": "Art-008", "name": "展品八号", "materialType": "寿字文化馆", "subCategory": "百寿图屏",
+      "image": "./images/8.jpg", "objUrl": null, "mtlUrl": null, "textureUrl": null,
+      "era": "明清时期", "location": "广西贺州", "spec": "自适应", "description": "这是第 8 件展品的详细介绍。"
+    },
+    {
+      "id": 9, "serial": "Art-009", "name": "展品九号", "materialType": "寿字文化馆", "subCategory": "寿字木雕",
+      "image": "./images/9.jpg", "objUrl": null, "mtlUrl": null, "textureUrl": null,
+      "era": "明清时期", "location": "广西贺州", "spec": "自适应", "description": "这是第 9 件展品的详细介绍。"
+    },
+    {
+      "id": 10, "serial": "Art-010", "name": "展品十号", "materialType": "寿字文化馆", "subCategory": "金箔寿字",
+      "image": "./images/10.jpg", "objUrl": null, "mtlUrl": null, "textureUrl": null,
+      "era": "明清时期", "location": "广西贺州", "spec": "自适应", "description": "这是第 10 件展品的详细介绍。"
     }
   ]
 }

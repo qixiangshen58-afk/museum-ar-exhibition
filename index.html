@@ -155,7 +155,7 @@
 
         <div class="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-4xl">
             <div id="landing-museum-tag" class="animate-reveal text-amber-500/90 text-[10px] md:text-sm tracking-[0.3em] md:tracking-[0.5em] mb-6 md:mb-8 border border-amber-500/30 px-6 py-2 md:px-8 md:py-2.5 rounded-full bg-black/40 backdrop-blur-md shadow-[0_0_20px_rgba(245,158,11,0.15)] whitespace-nowrap" style="animation-delay: 0.2s;">
-                <span id="display-tag"><i class="fa-solid fa-building-columns mr-2"></i>贺州文化博物馆 · AI 数字化特展</span>
+                <i class="fa-solid fa-building-columns mr-2"></i><span id="display-tag">贺州文化博物馆 · AI 数字化特展</span>
             </div>
             
             <h1 id="landing-main-title" class="animate-reveal text-5xl sm:text-7xl md:text-9xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-amber-50 via-amber-300 to-amber-700 mb-4 md:mb-6 tracking-widest drop-shadow-2xl accent-text" style="animation-delay: 0.5s; text-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);">
@@ -614,10 +614,13 @@
             </div>
             
             <div class="flex justify-between items-center pt-3 md:pt-4 border-t border-purple-900/50 mt-3 md:mt-4 flex-shrink-0">
-                <button id="preview-landing-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-stone-800 text-stone-300 border border-stone-600 rounded-lg text-xs md:text-sm transition"><i class="fa-solid fa-eye text-purple-400"></i> 重演主页</button>
+                <div class="flex gap-2">
+                    <button id="preview-landing-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-stone-800 text-stone-300 border border-stone-600 rounded-lg text-xs md:text-sm transition"><i class="fa-solid fa-eye text-purple-400"></i> 重演主页</button>
+                    <button id="export-json-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-emerald-900/60 text-emerald-300 border border-emerald-600/50 rounded-lg text-xs md:text-sm transition hover:bg-emerald-800 shadow-[0_0_15px_rgba(16,185,129,0.3)]"><i class="fa-solid fa-download text-emerald-400"></i> 导出分类配置 (data.json)</button>
+                </div>
                 <div class="flex gap-2">
                     <button id="cancel-config-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-stone-800 text-stone-300 rounded-lg text-xs md:text-sm">取消</button>
-                    <button id="save-config-btn" class="interactive-element px-4 md:px-6 py-1.5 md:py-2 bg-purple-600 text-white font-bold rounded-lg text-xs md:text-sm transition">应用配置</button>
+                    <button id="save-config-btn" class="interactive-element px-4 md:px-6 py-1.5 md:py-2 bg-purple-600 text-white font-bold rounded-lg text-xs md:text-sm transition">应用</button>
                 </div>
             </div>
         </div>
@@ -659,6 +662,7 @@
             </div>
         </div>
         <div class="flex gap-2 w-full md:w-auto">
+            <button id="batch-delete-btn" data-confirm="false" class="interactive-element flex-[0.8] md:flex-none bg-red-950 hover:bg-red-900 text-red-400 border border-red-800/50 px-3 py-2 md:px-4 md:py-3 rounded-lg text-xs md:text-sm transition shadow-md whitespace-nowrap md:h-full"><i class="fa-solid fa-trash-can mr-1"></i> 批量销毁</button>
             <button id="batch-confirm-btn" class="interactive-element flex-1 md:flex-none bg-blue-500 hover:bg-blue-600 text-black px-4 py-2 md:px-5 md:py-3 rounded-lg text-xs md:text-sm font-bold transition shadow-md whitespace-nowrap md:h-full">应用更改</button>
             <button id="batch-cancel-btn" class="interactive-element flex-[0.5] md:flex-none bg-stone-800 hover:bg-stone-700 text-stone-300 px-3 py-2 md:px-4 md:py-3 rounded-lg text-xs md:text-sm transition border border-stone-700 md:h-full">退出</button>
         </div>
@@ -855,6 +859,10 @@
             let currentAiStoryText = ""; 
             let currentAiAudio = null; 
             let qrcodeInstance = null;
+
+            // Three.js 全局变量声明
+            let scene, threeCamera, renderer, currentModel = null;
+            let arScene, arCamera, arRenderer, arCurrentModel = null;
 
             // DOM 元素 (通用)
             const videoElement = document.getElementById('webcam');
@@ -1462,7 +1470,7 @@
 
                     // 1. 覆盖全局 UI 文字配置
                     if (jsonData.siteConfig) {
-                        if (jsonData.siteConfig.tag) document.getElementById('landing-museum-tag').innerHTML = `<i class="fa-solid fa-building-columns mr-2"></i>` + jsonData.siteConfig.tag;
+                        if (jsonData.siteConfig.tag) document.getElementById('display-tag').innerText = jsonData.siteConfig.tag;
                         if (jsonData.siteConfig.mainTitle) document.getElementById('landing-main-title').innerText = jsonData.siteConfig.mainTitle;
                         if (jsonData.siteConfig.subTitle) document.getElementById('landing-sub-title').innerText = jsonData.siteConfig.subTitle;
                         if (jsonData.siteConfig.description) document.getElementById('landing-desc').innerHTML = jsonData.siteConfig.description.replace(/\n/g, '<br>');
@@ -1517,7 +1525,6 @@
 
                 const createBtn = (text, filterVal, index) => {
                     const btn = document.createElement('button');
-                    // 🌟 修改点：修改 padding 和文字大小，增加 shrink-0 和 whitespace-nowrap 适配移动端横向滑动
                     btn.className = `interactive-element animate-fade-in-up px-4 py-1.5 md:px-5 md:py-2 rounded-full text-[10px] md:text-xs font-bold tracking-widest transition-all duration-300 border shrink-0 whitespace-nowrap ${currentSubCategoryFilter === filterVal ? 'bg-amber-600 text-black border-amber-500 shadow-[0_0_15px_rgba(217,119,6,0.6)]' : 'bg-black/60 text-stone-400 border-stone-700/80 hover:text-amber-300 hover:border-amber-600/50 hover:bg-amber-950/40'}`;
                     btn.style.animationDelay = `${index * 0.05}s`; 
                     btn.innerText = text;
@@ -1538,7 +1545,6 @@
                 let cardIndex = 0; 
 
                 const allCard = document.createElement('div');
-                // 🌟 修改点：高度调整 h-[200px] md:h-[320px]，文字缩小
                 allCard.className = "interactive-element animate-fade-in-up animate-float group relative h-[200px] md:h-[320px] rounded-2xl md:rounded-3xl overflow-hidden border border-amber-500/40 cursor-pointer transform transition-all duration-500 hover:scale-105 hover:shadow-[0_30px_60px_rgba(245,158,11,0.25)] md:col-span-2 lg:col-span-2"; 
                 allCard.style.animationDelay = `${cardIndex * 0.1}s, 0s`; 
                 
@@ -1574,7 +1580,6 @@
                     const categoryMasks = masksData.filter(m => m.materialType === cat);
                     const coverImg = categoryMasks.length > 0 ? categoryMasks[0].image : '';
                     const card = document.createElement('div');
-                    // 🌟 修改点：高度调整 h-[180px] md:h-[320px]，文字缩小
                     card.className = "interactive-element animate-fade-in-up animate-float group relative h-[180px] md:h-[320px] rounded-2xl md:rounded-3xl overflow-hidden border border-stone-800 cursor-pointer transform transition-all duration-500 hover:scale-105 hover:border-amber-600/50 hover:shadow-[0_20px_50px_rgba(245,158,11,0.15)]";
                     card.style.animationDelay = `${cardIndex * 0.1}s, ${(cardIndex%3)*0.5}s`; 
                     
@@ -1636,7 +1641,6 @@
                     filteredCount++;
                     const isSelected = selectedMaskIndices.includes(index);
                     const item = document.createElement('div');
-                    // 🌟 修改点：卡片内边距缩小，图片高度限制调整，文字尺寸适配
                     item.className = `group animate-fade-in-up relative aspect-[3/4] flex flex-col items-center justify-between p-3 md:p-5 rounded-xl md:rounded-2xl border cursor-pointer transition-all transform duration-500 interactive-element ${isSelected ? 'ring-2 ring-blue-500 bg-blue-900/50 scale-95 shadow-[0_0_20px_rgba(59,130,246,0.6)]' : 'border-stone-800/80 bg-gradient-to-b from-stone-900/40 to-[#0b0c10] hover:border-amber-500/50 hover:-translate-y-1 md:hover:-translate-y-2 hover:shadow-[0_15px_40px_rgba(245,158,11,0.2)]'}`;
                     item.style.animationDelay = `${renderIndex * 0.05}s`;
                     renderIndex++;
@@ -1829,7 +1833,7 @@
             delBtn.addEventListener('click', () => {
                 soundSynth.playClick();
                 if (delBtn.dataset.confirm === 'true') {
-                    if (currentModel) { disposeThreeObject(currentModel); scene.remove(currentModel); currentModel = null; }
+                    if (typeof currentModel !== 'undefined' && currentModel) { disposeThreeObject(currentModel); scene.remove(currentModel); currentModel = null; }
                     
                     masksData.splice(activeMaskIndex, 1); 
                     detailView.classList.add('hidden'); document.getElementById('main-gallery').classList.remove('hidden');
@@ -2262,12 +2266,34 @@
                 const wasPlaying = isMusicPlaying; if(wasPlaying) stopGlobalMusic();
                 if(bgmConfig.mode === 'procedural') { proceduralBGM.setMasterVolume(bgmConfig.volume); proceduralBGM.setPitch(bgmConfig.proceduralPitch); } else customAudioPlayer.volume = bgmConfig.volume;
                 if(wasPlaying) setTimeout(() => { playGlobalMusic(); }, 100);
-                configModal.classList.add('hidden'); showToast("配置已更新生效！", "success");
+                configModal.classList.add('hidden'); showToast("配置已应用！（如需永久保存请点击导出）", "success");
             });
 
             document.getElementById('preview-landing-btn').addEventListener('click', () => {
                 soundSynth.playClick(); configModal.classList.add('hidden'); 
                 forceReturnToLanding();
+            });
+
+            document.getElementById('export-json-btn').addEventListener('click', () => {
+                soundSynth.playClick();
+                const exportData = {
+                    siteConfig: {
+                        tag: document.getElementById('cfg-landing-tag').value || "贺州文化博物馆 · AI 数字化特展",
+                        mainTitle: document.getElementById('cfg-landing-title').value || "上古遗音",
+                        subTitle: document.getElementById('cfg-landing-sub').value || "全息文物 AI 交互特展",
+                        description: document.getElementById('cfg-landing-desc').value || "",
+                        footerText: document.getElementById('cfg-footer-text').value || "© 2026 贺州文化博物馆 - AI 交互特展智能系统"
+                    },
+                    masksData: masksData
+                };
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "data.json");
+                document.body.appendChild(downloadAnchorNode); 
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+                showToast("✅ 已打包您的最新分类与数据！请去 GitHub 覆盖上传此 data.json", "success");
             });
 
             document.getElementById('enter-exhibition-btn').addEventListener('click', () => {
@@ -2343,13 +2369,71 @@
             });
 
             document.getElementById('batch-cat-btn').addEventListener('click', () => { soundSynth.playClick(); if(isBatchSelectMode){ isBatchSelectMode=false; document.getElementById('batch-action-bar').classList.add('hidden'); } else { isBatchSelectMode=true; selectedMaskIndices=[]; document.getElementById('batch-action-bar').classList.remove('hidden'); document.getElementById('batch-count').innerText='0'; } renderGallery(); });
-            document.getElementById('batch-cancel-btn').addEventListener('click', () => { soundSynth.playClick(); isBatchSelectMode=false; selectedMaskIndices=[]; document.getElementById('batch-action-bar').classList.add('hidden'); renderGallery(); });
+            
+            document.getElementById('batch-cancel-btn').addEventListener('click', () => { 
+                soundSynth.playClick(); 
+                isBatchSelectMode=false; 
+                selectedMaskIndices=[]; 
+                document.getElementById('batch-action-bar').classList.add('hidden'); 
+                // 退出时重置删除按钮状态
+                const batchDelBtn = document.getElementById('batch-delete-btn');
+                batchDelBtn.dataset.confirm = 'false';
+                batchDelBtn.innerHTML = '<i class="fa-solid fa-trash-can mr-1"></i> 批量销毁';
+                batchDelBtn.classList.replace('bg-red-600', 'bg-red-950');
+                batchDelBtn.classList.replace('text-white', 'text-red-400');
+                renderGallery(); 
+            });
+
             document.getElementById('batch-confirm-btn').addEventListener('click', () => { 
                 soundSynth.playClick(); const newMainCat = document.getElementById('batch-category-input').value.trim(); const newSubCat = document.getElementById('batch-subcategory-input').value.trim(); 
                 if((!newMainCat && !newSubCat) || selectedMaskIndices.length===0) return showToast("请填写要修改的大厅或子类名称", "error"); 
                 selectedMaskIndices.forEach(i => { if(newMainCat) masksData[i].materialType = newMainCat; if(newSubCat) masksData[i].subCategory = newSubCat; }); 
                 isBatchSelectMode=false; selectedMaskIndices=[]; document.getElementById('batch-action-bar').classList.add('hidden'); updateFilterOptions(); 
                 if (newMainCat) document.getElementById('material-filter').value = newMainCat; renderSubCategoryTabs(); renderGallery(); showToast("批量归类成功","success"); 
+            });
+
+            // --- 🌟 新增：批量删除逻辑 ---
+            let batchDeleteTimeout;
+            const batchDelBtn = document.getElementById('batch-delete-btn');
+            batchDelBtn.addEventListener('click', () => {
+                soundSynth.playClick();
+                if (selectedMaskIndices.length === 0) return showToast("请先选择要销毁的文物", "error");
+
+                if (batchDelBtn.dataset.confirm === 'true') {
+                    // 为了保证删除时数组索引不乱套，必须将选中序号从大到小倒序排列后再删除
+                    const sortedIndices = [...selectedMaskIndices].sort((a, b) => b - a);
+                    sortedIndices.forEach(idx => {
+                        masksData.splice(idx, 1);
+                    });
+
+                    isBatchSelectMode = false;
+                    selectedMaskIndices = [];
+                    document.getElementById('batch-action-bar').classList.add('hidden');
+                    
+                    updateFilterOptions(); 
+                    renderSubCategoryTabs(); 
+                    renderGallery(); 
+                    showToast(`✅ 成功永久销毁 ${sortedIndices.length} 件文物记录！`, "success");
+
+                    // 恢复按钮初始状态
+                    batchDelBtn.dataset.confirm = 'false';
+                    batchDelBtn.innerHTML = '<i class="fa-solid fa-trash-can mr-1"></i> 批量销毁';
+                    batchDelBtn.classList.replace('bg-red-600', 'bg-red-950');
+                    batchDelBtn.classList.replace('text-white', 'text-red-400');
+                    clearTimeout(batchDeleteTimeout);
+                } else {
+                    batchDelBtn.dataset.confirm = 'true';
+                    batchDelBtn.innerHTML = '<span class="font-bold">确认永久销毁?</span>';
+                    batchDelBtn.classList.replace('bg-red-950', 'bg-red-600');
+                    batchDelBtn.classList.replace('text-red-400', 'text-white');
+                    clearTimeout(batchDeleteTimeout);
+                    batchDeleteTimeout = setTimeout(() => { 
+                        batchDelBtn.dataset.confirm = 'false'; 
+                        batchDelBtn.innerHTML = '<i class="fa-solid fa-trash-can mr-1"></i> 批量销毁'; 
+                        batchDelBtn.classList.replace('bg-red-600', 'bg-red-950');
+                        batchDelBtn.classList.replace('text-white', 'text-red-400');
+                    }, 3000);
+                }
             });
             
             // 🌟 修复：重写批量选择切换方法，抛弃全量重绘，改为定点 CSS 样式切换

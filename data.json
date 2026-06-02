@@ -97,6 +97,7 @@
     {"id": 88, "name": "木雕面具 88", "materialType": "傩戏面具馆", "subCategory": "精选藏品", "image": "./images/88.jpg", "description": "第 88 件展品"},
     {"id": 89, "name": "木雕面具 89", "materialType": "傩戏面具馆", "subCategory": "精选藏品", "image": "./images/89.jpg", "description": "第 89 件展品"},
     {"id": 90, "name": "木雕面具 90", "materialType": "傩戏面具馆", "subCategory": "精选藏品", "image": "./images/90.jpg", "description": "第 90 件展品"},
-    {"id": 90, "name": "服饰展馆 91", "materialType": "服饰展馆", "subCategory": "精选藏品", "image": "./images/91.jpg", "description": "第 91 件展品"}
+    {"id": 91, "name": "服饰展馆 91", "materialType": "服饰展示馆", "subCategory": "精选藏品", "image": "./images/91.jpg", "description": "第 91 件展品"},
+    {"id": 92, "name": "木雕面具 92", "materialType": "3D展示馆", "subCategory": "精选藏品", "image": "./images/92.jpg", "description": "第 92 件展品"}
   ]
 }

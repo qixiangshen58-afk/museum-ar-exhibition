@@ -12,7 +12,7 @@
     <!-- QRCode.js 用于生成二维码 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-    <!-- MediaPipe 依赖: Hands (手势) & Face Mesh (脸部) 切换至稳定的 jsdelivr 源 -->
+    <!-- MediaPipe 依赖: Hands (手势) & Face Mesh (脸部) -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
@@ -83,7 +83,7 @@
             position: fixed; width: 44px; height: 44px; border-radius: 50%;
             border: 1.5px solid rgba(245, 158, 11, 0.8); background-color: rgba(245, 158, 11, 0.05);
             pointer-events: none; z-index: 9999; transform: translate(-50%, -50%);
-            transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1), height 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s, border-color 0.15s;
+            transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1), height 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s, border-color 0.15s, left 0.1s, top 0.1s;
             box-shadow: 0 0 15px rgba(245, 158, 11, 0.4), inset 0 0 10px rgba(245, 158, 11, 0.2);
             backdrop-filter: blur(2px);
         }
@@ -120,26 +120,6 @@
         .fade-transition { transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out; }
         .fade-out { opacity: 0; transform: scale(0.98); pointer-events: none; }
         .fade-in { opacity: 1; transform: scale(1); pointer-events: auto; }
-
-        /* 🌟 核心修复：定义独立安全的强制全屏类，防止被 Tailwind 动态漏编导致 Z-index 穿透，同时强制重置盒模型为 block 铺满屏幕 */
-        .fullscreen-webcam {
-            position: fixed !important;
-            display: block !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            max-width: none !important;
-            max-height: none !important;
-            z-index: 190 !important;
-            border: none !important;
-            border-radius: 0 !important;
-            transform: none !important;
-            box-shadow: none !important;
-            background-color: black !important;
-        }
     </style>
 </head>
 <body class="relative min-h-screen flex flex-col justify-between">
@@ -251,7 +231,6 @@
                 </p>
                 <div class="absolute left-1/2 -translate-x-1/2 bottom-[-10px] md:bottom-[-20px] w-32 md:w-48 h-[2px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
             </div>
-            <!-- 🌟 修复遮挡问题：将 pb-10 改为 pb-32 md:pb-12，为手机端底部留出充足的安全滚动空间 -->
             <div id="category-cards-container" class="flex-1 min-h-0 max-h-[75vh] md:max-h-[70vh] overflow-y-auto custom-scroll grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8 px-2 md:px-4 content-start p-2 md:p-4 pb-32 md:pb-12">
                 <!-- 分类大卡片由 JS 动态注入 -->
             </div>
@@ -289,7 +268,6 @@
             <!-- 展厅内部的二级分类导航 (移动端横滑) -->
             <div id="sub-category-nav" class="flex overflow-x-auto flex-nowrap md:flex-wrap no-scrollbar gap-2 md:gap-3 mb-3 md:mb-6 mt-1 md:mt-2 px-2 md:px-1 border-b border-stone-800/50 pb-3 md:pb-4"></div>
             
-            <!-- 🌟 修复遮挡问题：将 pb-12 改为 pb-32 md:pb-12，同样保护文物列表底部不被浏览器导航栏遮挡 -->
             <div id="mask-grid" class="flex-1 overflow-y-auto custom-scroll grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6 p-2 md:p-4 pb-32 md:pb-12 max-h-[65vh] border border-stone-800/50 rounded-xl md:rounded-2xl bg-black/20 backdrop-blur-sm shadow-inner relative">
                 <div id="empty-room-hint" class="hidden absolute inset-0 flex flex-col items-center justify-center text-stone-600 gap-2 md:gap-4">
                     <i class="fa-solid fa-box-open text-3xl md:text-5xl opacity-50"></i>
@@ -432,17 +410,13 @@
         </div>
     </footer>
 
-    <!-- 🌟 核心修改点：重新设计纯粹底层的背景视频管线，告别冲突与黑屏 -->
     <div id="ar-view" class="hidden fixed inset-0 z-[200] flex items-center justify-center overflow-hidden bg-black">
         
-        <!-- 最纯净的独立底层背景视频流，直接克隆自前置摄像头 -->
         <video id="ar-bg-video" class="absolute inset-0 w-full h-full object-cover transform scale-x-[-1] z-0" autoplay playsinline muted></video>
 
-        <!-- 玻璃遮罩面具涂画层 -->
         <canvas id="ar-canvas" class="absolute inset-0 w-full h-full object-cover transform scale-x-[-1] pointer-events-none z-10"></canvas>
         <div id="ar-three-container" class="absolute inset-0 w-full h-full pointer-events-none transform scale-x-[-1] z-10"></div>
 
-        <!-- 彻底去掉黑底遮罩，仅保留图标 -->
         <div id="ar-loading-indicator" class="absolute inset-0 flex flex-col items-center justify-center z-20 transition-opacity duration-700 pointer-events-none">
             <div class="relative w-16 h-16 md:w-24 md:h-24 mb-4 md:mb-6">
                 <div class="absolute inset-0 border-t-2 border-emerald-500 rounded-full animate-spin shadow-lg"></div>
@@ -616,7 +590,8 @@
             <div class="flex justify-between items-center pt-3 md:pt-4 border-t border-purple-900/50 mt-3 md:mt-4 flex-shrink-0">
                 <div class="flex gap-2">
                     <button id="preview-landing-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-stone-800 text-stone-300 border border-stone-600 rounded-lg text-xs md:text-sm transition"><i class="fa-solid fa-eye text-purple-400"></i> 重演主页</button>
-                    <button id="export-json-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-emerald-900/60 text-emerald-300 border border-emerald-600/50 rounded-lg text-xs md:text-sm transition hover:bg-emerald-800 shadow-[0_0_15px_rgba(16,185,129,0.3)]"><i class="fa-solid fa-download text-emerald-400"></i> 导出分类配置 (data.json)</button>
+                    <button id="batch-ai-generate-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-indigo-900/60 text-indigo-300 border border-indigo-600/50 rounded-lg text-xs md:text-sm transition hover:bg-indigo-800 shadow-[0_0_15px_rgba(79,70,229,0.3)]"><i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i> AI 批量赋能</button>
+                    <button id="export-json-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-emerald-900/60 text-emerald-300 border border-emerald-600/50 rounded-lg text-xs md:text-sm transition hover:bg-emerald-800 shadow-[0_0_15px_rgba(16,185,129,0.3)]"><i class="fa-solid fa-download text-emerald-400"></i> 导出配置 (data.json)</button>
                 </div>
                 <div class="flex gap-2">
                     <button id="cancel-config-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-stone-800 text-stone-300 rounded-lg text-xs md:text-sm">取消</button>
@@ -807,20 +782,9 @@
             const apiKey = ""; // 🌟 Gemini API Key, 由运行环境自动注入
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'museum-gesture-mask';
             
-            window.appCategories = ['古代面具馆', '古代服饰馆', '古代家具馆', '寿字文化馆'];
-            window.appSubCategories = [
-                '有色面具', '无色面具', '祭祀傩面', 
-                '祭司长袍', '平民麻衣', '贵族丝绸', 
-                '紫檀木椅', '黄花梨案', '阴沉木榻', 
-                '百寿图屏', '寿字木雕', '金箔寿字'
-            ];
-
-            const hallMap = {
-                '古代面具馆': ['有色面具', '无色面具', '祭祀傩面'],
-                '古代服饰馆': ['祭司长袍', '平民麻衣', '贵族丝绸'],
-                '古代家具馆': ['紫檀木椅', '黄花梨案', '阴沉木榻'],
-                '寿字文化馆': ['百寿图屏', '寿字木雕', '金箔寿字']
-            };
+            // 已清空默认的莫须有展馆和分类，留给馆长后期在后台自由配置
+            window.appCategories = [];
+            window.appSubCategories = [];
             
             const fallbackSVG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="260"><rect width="200" height="260" fill="#111" stroke="#333" stroke-width="2"/><text x="100" y="130" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" alignment-baseline="middle">馆藏暂无影像</text></svg>');
 
@@ -844,7 +808,7 @@
             let currentHoveredElement = null; 
             let possibleClickElement = null; 
             let handPrevX = null; let handPrevY = null; 
-            let lastWristRaw = null; // 🌟 新增：记录上一帧原生手腕坐标，用于拦截焦点跳跃
+            let lastWristRaw = null; 
             let targetRotationX = 0; let targetRotationY = 0;
             let currentRotationX = 0; let currentRotationY = 0;
             let currentFloatY = 0;
@@ -879,7 +843,7 @@
             const arLoadingIndicator = document.getElementById('ar-loading-indicator');
             const container3d = document.getElementById('interaction-canvas-container');
 
-            // --- 🤖 无人值守看门狗机制 (Idle Watchdog) 终极修复版 ---
+            // --- 🤖 无人值守看门狗机制 (Idle Watchdog) ---
             function forceReturnToLanding() {
                 if (isAtLandingPage) return;
                 
@@ -913,7 +877,6 @@
                     if(typeof arRenderer !== 'undefined' && arRenderer) arRenderer.clear();
                     if(typeof arCtx !== 'undefined' && arCtx) arCtx.clearRect(0, 0, arCanvas.width, arCanvas.height);
 
-                    // 🌟 隐藏掉全屏背景视频并释放原悬浮窗的隐藏状态
                     document.getElementById('webcam-container').classList.remove('hidden');
                     document.getElementById('ar-bg-video').pause();
                 }
@@ -922,7 +885,7 @@
                 if(window.speechSynthesis) window.speechSynthesis.cancel();
                 if (currentAiAudio) { currentAiAudio.pause(); currentAiAudio = null; }
                 
-                // 🌟 4. 重置主架构容器 (修复白屏问题的关键：统筹 hidden 和 fade-out 的生命周期)
+                // 4. 重置主架构容器
                 document.getElementById('main-header').classList.add('hidden', 'fade-out'); 
                 document.getElementById('main-content').classList.add('hidden', 'fade-out'); 
                 document.getElementById('main-footer').classList.add('hidden', 'fade-out');
@@ -1017,6 +980,23 @@
                 }
             }
 
+            // 🌟 核心新增：图片转 Base64 辅助函数（为 AI 注入视觉识别能力）
+            async function getBase64Image(url) {
+                try {
+                    const res = await fetch(url);
+                    const blob = await res.blob();
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve({ mimeType: blob.type, data: reader.result.split(',')[1] });
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (e) {
+                    console.warn("图片转码失败，AI将回退到纯文本盲猜模式", e);
+                    return null;
+                }
+            }
+
             function typeWriterEffect(element, text, speed = 40) {
                 element.innerHTML = '<span class="typing-cursor"></span>';
                 let i = 0;
@@ -1032,22 +1012,26 @@
                 
                 storyBox.classList.remove('hidden'); 
                 ttsBtn.classList.add('hidden');
-                storyBox.innerHTML = '<div class="flex items-center gap-2 animate-pulse"><i class="fa-solid fa-spinner fa-spin text-amber-500"></i><span>正在连线 Gemini 引擎查阅古籍...</span></div>';
+                storyBox.innerHTML = '<div class="flex items-center gap-2 animate-pulse"><i class="fa-solid fa-spinner fa-spin text-amber-500"></i><span>正在连线 Gemini 视觉引擎鉴赏文物...</span></div>';
                 
                 if (activeMaskIndex === null) return;
                 const mask = masksData[activeMaskIndex];
                 
-                const prompt = `你是一位极具文化底蕴的贺州文化博物馆AI馆长。请为这件珍宝写一段优美、深沉的短篇解说词（约150字，适合用作语音导览）。
+                const prompt = `你是一位极具文化底蕴的贺州文化博物馆AI馆长。请仔细观察我提供的这张展品图片。
                 藏品名：${mask.name}
                 所属展馆：${mask.materialType}
                 细分流派：${mask.subCategory}
                 时代：${mask.era}
-                请结合华夏古傩戏文化或古代工艺的背景进行深情解说。直接输出解说内容，不要带有任何寒暄、前缀或Markdown符号。`;
+                请结合华夏古傩戏文化背景以及图片中的视觉特征（如色彩、神态、雕工等），为这件珍宝写一段优美、深沉的短篇解说词（约150字，适合用作语音导览）。必须在讲解中包含针对画面外观的具体描述。直接输出解说内容，不要带有任何寒暄、前缀或Markdown符号。`;
 
                 try {
+                    const imageInlineData = await getBase64Image(mask.image);
+                    const parts = [{ text: prompt }];
+                    if (imageInlineData) parts.push({ inlineData: imageInlineData });
+
                     const payload = {
-                        contents: [{ parts: [{ text: prompt }] }],
-                        systemInstruction: { parts: [{ text: "你是一位专业的博物馆AI馆长和历史学家，知识渊博，用词优美。" }] }
+                        contents: [{ parts: parts }],
+                        systemInstruction: { parts: [{ text: "你是一位专业的博物馆AI馆长和艺术鉴赏家，请结合图片真实的视觉特征进行深入浅出、用词优美的讲解。" }] }
                     };
                     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
                     const result = await fetchGeminiWithRetry(url, payload);
@@ -1119,11 +1103,19 @@
 
                 const mask = masksData[activeMaskIndex];
                 const prompt = `你是一位学识渊博的贺州文化博物馆馆长。游客正在参观藏品「${mask.name}」（大类：${mask.materialType}，子类：${mask.subCategory}）。
+                如果我附带了图片，请仔细看图并结合图片的视觉特征。
                 游客问你：“${question}”
                 请用亲切、专业、简练的语言（约80字以内）回答游客的问题，直接输出回答内容。`;
 
                 try {
-                    const payload = { contents: [{ parts: [{ text: prompt }] }], systemInstruction: { parts: [{ text: "你是一位热情友好的博物馆AI馆长，乐于解答游客疑惑。" }] } };
+                    const imageInlineData = await getBase64Image(mask.image);
+                    const parts = [{ text: prompt }];
+                    if (imageInlineData) parts.push({ inlineData: imageInlineData });
+
+                    const payload = { 
+                        contents: [{ parts: parts }], 
+                        systemInstruction: { parts: [{ text: "你是一位热情友好的博物馆AI馆长，善于观察文物外观特征来生动地解答游客疑惑。" }] } 
+                    };
                     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
                     const result = await fetchGeminiWithRetry(url, payload);
                     const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -1391,8 +1383,12 @@
             
             function animateRender() {
                 requestAnimationFrame(animateRender);
-                partCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height); 
-                particles.forEach(p => { p.update(); p.draw(); });
+
+                // 🌟 进阶优化：Render Throttling 渲染管线节流
+                if (!isARMode) {
+                    partCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height); 
+                    particles.forEach(p => { p.update(); p.draw(); });
+                }
                 
                 const isDetailVisible = !detailView.classList.contains('hidden');
                 if (isDetailVisible && !isARMode) {
@@ -1427,18 +1423,31 @@
                                 const ndcX = ((minX + maxX) / 2 * 2) - 1, ndcY = -((minY + maxY) / 2 * 2) + 1; 
                                 const worldHeight = 2 * Math.tan(arCamera.fov * Math.PI / 360) * arCamera.position.z;
                                 const worldWidth = worldHeight * arCamera.aspect;
-                                const worldX = ndcX * (worldWidth / 2), worldY = ndcY * (worldHeight / 2);
                                 const faceWorldWidth = (maxX - minX) * worldWidth;
-                                const targetScale = (faceWorldWidth / arCurrentModel.userData.originalSize) * 2.0;
-                                arCurrentModel.scale.set(targetScale, targetScale, targetScale);
+
+                                const rawX = ndcX * (worldWidth / 2);
+                                const rawY = ndcY * (worldHeight / 2) + faceWorldWidth * 0.25;
+                                const rawScale = (faceWorldWidth / arCurrentModel.userData.originalSize) * 2.0;
 
                                 const leftEye = latestFaceLandmarks[33], rightEye = latestFaceLandmarks[263], nose = latestFaceLandmarks[1];
-                                const roll = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x);
-                                const yaw = ((leftEye.x + rightEye.x) / 2 - nose.x) * 2.5; 
-                                const pitch = ((leftEye.y + rightEye.y) / 2 - nose.y + 0.06) * 3.0; 
+                                const rawRoll = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x);
+                                const rawYaw = ((leftEye.x + rightEye.x) / 2 - nose.x) * 2.5; 
+                                const rawPitch = ((leftEye.y + rightEye.y) / 2 - nose.y + 0.06) * 3.0; 
 
-                                arCurrentModel.position.set(worldX, worldY + faceWorldWidth * 0.25, 0);
-                                arCurrentModel.rotation.set(pitch, yaw, -roll);
+                                // --- 🌟 进阶优化：AR 平滑插值 (Lerp Smoothing) ---
+                                if (!window.arSmooth) window.arSmooth = { x: rawX, y: rawY, s: rawScale, r: rawRoll, yw: rawYaw, p: rawPitch };
+                                const lerpFactor = 0.25; 
+                                window.arSmooth.x += (rawX - window.arSmooth.x) * lerpFactor;
+                                window.arSmooth.y += (rawY - window.arSmooth.y) * lerpFactor;
+                                window.arSmooth.s += (rawScale - window.arSmooth.s) * lerpFactor;
+                                window.arSmooth.r += (rawRoll - window.arSmooth.r) * lerpFactor;
+                                window.arSmooth.yw += (rawYaw - window.arSmooth.yw) * lerpFactor;
+                                window.arSmooth.p += (rawPitch - window.arSmooth.p) * lerpFactor;
+
+                                arCurrentModel.position.set(window.arSmooth.x, window.arSmooth.y, 0);
+                                arCurrentModel.rotation.set(window.arSmooth.p, window.arSmooth.yw, -window.arSmooth.r);
+                                arCurrentModel.scale.set(window.arSmooth.s, window.arSmooth.s, window.arSmooth.s);
+                                
                                 if (typeof arRenderer !== 'undefined' && arRenderer) arRenderer.render(arScene, arCamera);
 
                             } else if (activeMask && activeMask.image && arMaskImage.complete && arMaskImage.naturalWidth > 0) {
@@ -1446,10 +1455,18 @@
                                 const fw = (maxX - minX) * arCanvas.width, fh = (maxY - minY) * arCanvas.height;
                                 const fcX = (minX + maxX) / 2 * arCanvas.width, fcY = (minY + maxY) / 2 * arCanvas.height;
                                 const leftEye = latestFaceLandmarks[33], rightEye = latestFaceLandmarks[263];
-                                const angle = Math.atan2((rightEye.y - leftEye.y) * arCanvas.height, (rightEye.x - leftEye.x) * arCanvas.width);
+                                const rawAngle = Math.atan2((rightEye.y - leftEye.y) * arCanvas.height, (rightEye.x - leftEye.x) * arCanvas.width);
 
-                                arCtx.save(); arCtx.translate(fcX, fcY); arCtx.rotate(angle);
-                                try { arCtx.drawImage(arMaskImage, -(fw * 2.2)/2, -(fh * 2.2)/2 - (fh * 2.2 * 0.25), fw * 2.2, fh * 2.2); } catch(e) {} 
+                                // 2D 贴纸同理加入极简平滑
+                                if (!window.arSmooth2D) window.arSmooth2D = { x: fcX, y: fcY, w: fw, h: fh, a: rawAngle };
+                                window.arSmooth2D.x += (fcX - window.arSmooth2D.x) * 0.3;
+                                window.arSmooth2D.y += (fcY - window.arSmooth2D.y) * 0.3;
+                                window.arSmooth2D.w += (fw - window.arSmooth2D.w) * 0.3;
+                                window.arSmooth2D.h += (fh - window.arSmooth2D.h) * 0.3;
+                                window.arSmooth2D.a += (rawAngle - window.arSmooth2D.a) * 0.3;
+
+                                arCtx.save(); arCtx.translate(window.arSmooth2D.x, window.arSmooth2D.y); arCtx.rotate(window.arSmooth2D.a);
+                                try { arCtx.drawImage(arMaskImage, -(window.arSmooth2D.w * 2.2)/2, -(window.arSmooth2D.h * 2.2)/2 - (window.arSmooth2D.h * 2.2 * 0.25), window.arSmooth2D.w * 2.2, window.arSmooth2D.h * 2.2); } catch(e) {} 
                                 arCtx.restore();
                             }
                         } else {
@@ -1460,15 +1477,12 @@
                 }
             }
 
-            // 🌟 核心更新：使用 fetch 读取外部 data.json
             async function loadExhibitionData() {
                 try {
-                    // 尝试从同级目录加载 data.json
                     const response = await fetch('./data.json');
                     if (!response.ok) throw new Error("Local data.json not found");
                     const jsonData = await response.json();
 
-                    // 1. 覆盖全局 UI 文字配置
                     if (jsonData.siteConfig) {
                         if (jsonData.siteConfig.tag) document.getElementById('display-tag').innerText = jsonData.siteConfig.tag;
                         if (jsonData.siteConfig.mainTitle) document.getElementById('landing-main-title').innerText = jsonData.siteConfig.mainTitle;
@@ -1480,13 +1494,10 @@
                         }
                     }
 
-                    // 2. 加载真实的藏品数据
                     if (jsonData.masksData && Array.isArray(jsonData.masksData)) {
                         masksData = jsonData.masksData;
-                        // 为数据补充必需的系统 id 索引
                         masksData.forEach((m, idx) => { 
                             if(!m.id) m.id = idx; 
-                            // 🌟 新增：智能补全残缺的图片路径
                             if (m.image && !m.image.includes('/') && !m.image.startsWith('blob:') && !m.image.startsWith('data:')) {
                                 m.image = './images/' + m.image;
                             }
@@ -1494,27 +1505,8 @@
                     }
 
                 } catch (e) {
-                    console.warn("未能加载外部 data.json (可能文件不存在或跨域拦截)，退回演示数据模式", e);
-                    // 如果没找到 JSON 或者运行在本地 file:// 协议，就使用演示数据防白屏
-                    generate90Masks();
-                }
-            }
-
-            function generate90Masks() {
-                if (masksData.length > 0) return; 
-                const keys = Object.keys(hallMap);
-                for (let i = 0; i < 90; i++) {
-                    const mainCat = keys[i % keys.length];
-                    const subCats = hallMap[mainCat];
-                    const subCat = subCats[i % subCats.length];
-                    let currentImage = `./images/${(i % 9) + 1}.jpg`;
-                    let nameTemplate = mainCat === '古代面具馆' ? "通神木面" : mainCat === '古代服饰馆' ? "织锦古袍" : mainCat === '古代家具馆' ? "祥云太师椅" : "祈福延年匾";
-
-                    masksData.push({
-                        id: i, serial: `Art-${1000 + i}`, name: `${subCat}·${nameTemplate}`, materialType: mainCat, subCategory: subCat,
-                        color: '#e5c583', image: currentImage, objUrl: null, mtlUrl: null, textureUrl: null,
-                        era: "明清时期", location: "中国西南", spec: "自适应规格", description: `属于${mainCat}馆中的【${subCat}】陈列区，承载着古代华夏先民的深切渴望与高超工艺。`
-                    });
+                    console.warn("未能加载外部 data.json (可能文件不存在或跨域拦截)，当前为初始空馆状态", e);
+                    // 已移除自动生成90个假数据的逻辑，保持0展品状态
                 }
             }
 
@@ -1853,7 +1845,7 @@
                 }
             });
 
-            // --- 🌟 核心新增：AI 留影明信片生成引擎 🌟 ---
+            // --- 🌟 AI 留影明信片生成引擎 🌟 ---
             const postcardModal = document.getElementById('postcard-modal');
             let currentPostcardDataUrl = null;
             let currentMaskObj = null;
@@ -1895,7 +1887,7 @@
                 setTimeout(() => { postcardModal.classList.add('hidden'); }, 500);
             });
 
-            // ✨ 高清 Canvas 合成引擎：按视觉稿重绘一切元素 ✨
+            // ✨ 高清 Canvas 合成引擎
             document.getElementById('download-postcard-btn').addEventListener('click', async () => {
                 soundSynth.playClick();
                 const btn = document.getElementById('download-postcard-btn');
@@ -2029,16 +2021,13 @@
             async function initFaceMesh() {
                 try {
                     faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
-                    // 🌟 核心修复 1：关闭极为耗费性能的精细虹膜追踪，释放手机端显存，防止页面假死
                     faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: false, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
                     faceMesh.onResults(r => { 
                         latestFaceLandmarks = r.multiFaceLandmarks && r.multiFaceLandmarks.length > 0 ? r.multiFaceLandmarks[0] : null; 
                         if (latestFaceLandmarks) {
-                            resetActivity(); // 🌟 如果检测到人脸（说明游客正在看屏幕试戴），立即重置看门狗，绝对不退回主页！
+                            resetActivity(); // 🌟 如果检测到人脸（说明游客正在看屏幕试戴），立即重置看门狗
                         }
                     });
-
-                    // 🌟 核心修复 2：预加载模型，配合 async/await 顺序执行
                     await faceMesh.initialize();
                 } catch(e) {
                     console.warn("FaceMesh 初始化异常", e);
@@ -2056,7 +2045,6 @@
                 const tempCanvas = document.createElement('canvas'); tempCanvas.width = arCanvas.width; tempCanvas.height = arCanvas.height;
                 const tCtx = tempCanvas.getContext('2d'); tCtx.translate(tempCanvas.width, 0); tCtx.scale(-1, 1); 
                 
-                // 🌟 重新拼合底层原生背景和透明面具涂层，保证成片的精准
                 tCtx.drawImage(document.getElementById('ar-bg-video'), 0, 0, tempCanvas.width, tempCanvas.height); 
                 tCtx.drawImage(arCanvas, 0, 0); 
                 
@@ -2073,7 +2061,6 @@
                 
                 const aiTextToUse = currentAiStoryText || activeMask.description;
                 
-                // 🌟 体验优化：拍照后稍微延时停留，让人看清闪光灯，再平滑退出 AR 界面生成明信片
                 setTimeout(() => {
                     document.getElementById('exit-ar-btn').click();
                     setTimeout(() => {
@@ -2083,7 +2070,6 @@
                 }, 400); 
             }
 
-            // 🌟 核心修复 3：添加 Ghost Click 防御锁，防止手机触摸穿透引发的“一秒闪退”
             arView.addEventListener('click', (e) => {
                 // 如果距离开启 AR 界面还不满 1200 毫秒，强制拦截任何屏幕点击 (免疫穿透误触拍照)
                 if (Date.now() - arStartTime < 1200) return;
@@ -2103,19 +2089,17 @@
                 arSessionId++; // 使得之前的加载作废
                 const currentSession = arSessionId;
 
-                // 🌟 把主摄像头的真实媒体流克隆给底层独立的全屏视频标签，并在进入AR瞬间将其静音播放
                 const arBgVideo = document.getElementById('ar-bg-video');
                 if (videoElement.srcObject) {
                     arBgVideo.srcObject = videoElement.srcObject;
                     arBgVideo.play().catch(e => console.log("AR BG Play blocked", e));
                 }
                 
-                // 隐藏掉右下角的悬浮窗，避免多重渲染影响性能
                 document.getElementById('webcam-container').classList.add('hidden');
 
                 if (mask.objUrl) {
                     load3DModel(mask.objUrl, mask.mtlUrl, mask.textureUrl, (modelGroup) => { 
-                        if (currentSession !== arSessionId) return; // 🌟 拦截已被用户或看门狗抛弃的加载任务
+                        if (currentSession !== arSessionId) return; 
                         arCurrentModel = modelGroup; arCurrentModel.visible = false; arScene.add(arCurrentModel); 
                     });
                 } else if(mask.image) { 
@@ -2126,7 +2110,6 @@
                 document.getElementById('ar-mask-name-display').innerText = mask.name; isARMode = true; arShutterState = 0; latestFaceLandmarks = null;
                 document.getElementById('ar-loading-indicator').classList.remove('opacity-0'); 
                 
-                // 🌟 统一 hidden 和 fade-out，防止渲染遗漏
                 document.getElementById('main-header').classList.add('hidden', 'fade-out');
                 document.getElementById('main-content').classList.add('hidden', 'fade-out'); 
                 document.getElementById('main-footer').classList.add('hidden', 'fade-out');
@@ -2138,11 +2121,10 @@
             document.getElementById('exit-ar-btn').addEventListener('click', () => {
                 soundSynth.playClick(); isARMode = false; arView.classList.add('hidden');
                 
-                arSessionId++; // 销毁进行中的加载
+                arSessionId++; 
                 
                 if (typeof arCurrentModel !== 'undefined' && arCurrentModel) { disposeThreeObject(arCurrentModel); arScene.remove(arCurrentModel); arCurrentModel = null; if(typeof arRenderer !== 'undefined' && arRenderer) arRenderer.clear(); }
             
-                // 🌟 还原原生摄像头容器到右下角，并停止全屏背景视频的播放以节省性能
                 document.getElementById('webcam-container').classList.remove('hidden');
                 document.getElementById('ar-bg-video').pause();
 
@@ -2280,6 +2262,85 @@
                 forceReturnToLanding();
             });
 
+            // --- 🌟 核心新增：AI 批量赋能脚本 ---
+            document.getElementById('batch-ai-generate-btn').addEventListener('click', async () => {
+                soundSynth.playClick();
+                const btn = document.getElementById('batch-ai-generate-btn');
+                const originalHtml = btn.innerHTML;
+                
+                if (!confirm("即将调用 Gemini API 为所有【默认名称或暂无描述】的文物生成专属名字和解说词。\n\n这可能需要几分钟时间，期间请勿关闭页面。确定要开始吗？")) return;
+
+                btn.disabled = true;
+                let successCount = 0;
+                let failCount = 0;
+                
+                const masksToProcess = masksData.filter(mask => 
+                    mask.name.includes('未知珍宝') || 
+                    mask.name.includes('通神木面') || 
+                    mask.name.includes('古袍') || 
+                    mask.description.includes('通过批量图像智配引擎自动生成') || 
+                    mask.description.includes('承载着古代华夏先民')
+                );
+
+                if (masksToProcess.length === 0) {
+                    showToast("🎉 馆长，当前所有文物都已经拥有专属信息了，无需赋能！", "success");
+                    btn.disabled = false;
+                    return;
+                }
+
+                for (let i = 0; i < masksToProcess.length; i++) {
+                    const mask = masksToProcess[i];
+                    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 正在创作文案 (${i+1}/${masksToProcess.length})...`;
+                    
+                    const prompt = `你是一位顶级的博物馆策展人与视觉艺术历史学家。
+我为你提供了一张这件珍宝的高清图片。已知它的大类是【${mask.materialType}】，细分流派是【${mask.subCategory || '未分类'}】。
+请务必仔细观察图片的真实视觉特征（如：材质纹理、色彩涂装、面部表情、雕刻细节等），为它量身定做：
+1. 一个富有文化底蕴的专属名字（如：青铜饕餮镇墓面、滇国羽人祭祀金面，不超过12个字，需高度契合它的外观）。
+2. 一段约80-100字的优美、深沉的背景解说词。解说词中必须包含对图片中具体特征的精准描述（例如“它眉宇间的红漆斑驳”、“似笑非笑的神秘唇角”、“额头的神秘图腾”等），让解说词能完全对应这张图。`;
+
+                    try {
+                        const imageInlineData = await getBase64Image(mask.image);
+                        const parts = [{ text: prompt }];
+                        if (imageInlineData) parts.push({ inlineData: imageInlineData });
+
+                        const payload = { 
+                            contents: [{ parts: parts }],
+                            generationConfig: { 
+                                responseMimeType: "application/json",
+                                responseSchema: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        name: { type: "STRING" },
+                                        desc: { type: "STRING" }
+                                    }
+                                }
+                            },
+                            systemInstruction: { parts: [{ text: "你是一个专业的历史专家和艺术鉴赏家，必须根据提供的图片真实视觉特征输出生动、具体的文物讲解文案。" }] }
+                        };
+                        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                        const result = await fetchGeminiWithRetry(url, payload);
+                        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                        
+                        if (text) {
+                            const aiData = JSON.parse(text);
+                            if (aiData.name) mask.name = aiData.name;
+                            if (aiData.desc) mask.description = aiData.desc;
+                            successCount++;
+                            renderGallery(); 
+                        }
+                    } catch (err) {
+                        console.error(`文物 [${mask.id}] 生成失败:`, err);
+                        failCount++;
+                    }
+                    
+                    await new Promise(r => setTimeout(r, 4200));
+                }
+
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+                showToast(`✅ 批量赋能完成！成功编撰 ${successCount} 件，失败 ${failCount} 件。请记得【导出 data.json】保存！`, "success");
+            });
+
             document.getElementById('export-json-btn').addEventListener('click', () => {
                 soundSynth.playClick();
                 const exportData = {
@@ -2310,7 +2371,6 @@
                 document.getElementById('category-selection-view').classList.remove('hidden'); 
                 document.getElementById('main-gallery').classList.add('hidden');
                 
-                // 🌟 先移除 hidden 占据物理空间，再移除 fade-out 触发淡入动画
                 document.getElementById('main-header').classList.remove('hidden');
                 document.getElementById('main-content').classList.remove('hidden');
                 document.getElementById('main-footer').classList.remove('hidden');
@@ -2381,7 +2441,6 @@
                 isBatchSelectMode=false; 
                 selectedMaskIndices=[]; 
                 document.getElementById('batch-action-bar').classList.add('hidden'); 
-                // 退出时重置删除按钮状态
                 const batchDelBtn = document.getElementById('batch-delete-btn');
                 batchDelBtn.dataset.confirm = 'false';
                 batchDelBtn.innerHTML = '<i class="fa-solid fa-trash-can mr-1"></i> 批量销毁';
@@ -2398,7 +2457,6 @@
                 if (newMainCat) document.getElementById('material-filter').value = newMainCat; renderSubCategoryTabs(); renderGallery(); showToast("批量归类成功","success"); 
             });
 
-            // --- 🌟 新增：批量删除逻辑 ---
             let batchDeleteTimeout;
             const batchDelBtn = document.getElementById('batch-delete-btn');
             batchDelBtn.addEventListener('click', () => {
@@ -2406,7 +2464,6 @@
                 if (selectedMaskIndices.length === 0) return showToast("请先选择要销毁的文物", "error");
 
                 if (batchDelBtn.dataset.confirm === 'true') {
-                    // 为了保证删除时数组索引不乱套，必须将选中序号从大到小倒序排列后再删除
                     const sortedIndices = [...selectedMaskIndices].sort((a, b) => b - a);
                     sortedIndices.forEach(idx => {
                         masksData.splice(idx, 1);
@@ -2421,7 +2478,6 @@
                     renderGallery(); 
                     showToast(`✅ 成功永久销毁 ${sortedIndices.length} 件文物记录！`, "success");
 
-                    // 恢复按钮初始状态
                     batchDelBtn.dataset.confirm = 'false';
                     batchDelBtn.innerHTML = '<i class="fa-solid fa-trash-can mr-1"></i> 批量销毁';
                     batchDelBtn.classList.replace('bg-red-600', 'bg-red-950');
@@ -2442,14 +2498,12 @@
                 }
             });
             
-            // 🌟 修复：重写批量选择切换方法，抛弃全量重绘，改为定点 CSS 样式切换
             function toggleBatchSelection(idx) {
                 soundSynth.playClick();
                 const p = selectedMaskIndices.indexOf(idx);
                 const gridItem = document.querySelector(`#mask-grid div[data-index="${idx}"]`);
                 
                 if (p > -1) {
-                    // 取消选中：动态移除高亮状态，并还原默认深色边框状态
                     selectedMaskIndices.splice(p, 1);
                     if (gridItem) {
                         gridItem.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-900/50', 'scale-95', 'shadow-[0_0_20px_rgba(59,130,246,0.6)]');
@@ -2461,7 +2515,6 @@
                         }
                     }
                 } else {
-                    // 激活选中：移除默认边框状态，注入发光蓝环高亮状态
                     selectedMaskIndices.push(idx);
                     if (gridItem) {
                         gridItem.classList.add('ring-2', 'ring-blue-500', 'bg-blue-900/50', 'scale-95', 'shadow-[0_0_20px_rgba(59,130,246,0.6)]');
@@ -2474,19 +2527,18 @@
                     }
                 }
                 
-                // 仅更新底部操作台的计数器
                 document.getElementById('batch-count').innerText = selectedMaskIndices.length; 
             }
 
             // --- 手势识别引擎 ---
             const toggleCameraBtn = document.getElementById('toggle-camera-btn');
+            
             async function initializeHandsDetection() {
                 statusText.innerText = "激活 AI 视觉..."; statusDot.className = "w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-amber-500 animate-pulse";
                 
                 try {
                     const hands = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
                     
-                    // 🌟 防干扰升级 1：大幅提升追踪与检测置信度，强迫 AI 忽略模糊的背景手，只锁定最近最清晰的主力手
                     hands.setOptions({ 
                         maxNumHands: 1, 
                         modelComplexity: 1, 
@@ -2495,7 +2547,6 @@
                     });
                     hands.onResults(onHandResults);
                     
-                    // 🌟 核心修复：依次初始化模型，防止 WebAssembly (WASM) 命名空间冲突导致 RuntimeError: Aborted
                     await hands.initialize();
                     await initFaceMesh();
                     
@@ -2534,30 +2585,25 @@
                 if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                     const landmarks = results.multiHandLandmarks[0]; 
                     
-                    // 🌟 防干扰升级 2：Z轴景深（物理尺寸）过滤器
-                    // 计算手腕(0)到中指尖(12)的归一化距离。主操作者的手离屏幕近占比大(>0.2)，后方围观群众的手很小(<0.15)
                     const wristRaw = landmarks[0];
                     const middleTip = landmarks[12];
                     const handSize = getDistance(wristRaw, middleTip);
                     
-                    // 如果手部比例小于 15%，系统自动判定为后方干扰人群，直接丢弃该帧数据
                     if (handSize < 0.15) {
                         return; 
                     }
 
-                    // 🌟 防干扰升级 3：瞬移防抖锁 (Spatial Jump Lock)
-                    // 防止 AI 焦点瞬间从主操作者跳跃到旁观者手上，引发画面展品和光标乱甩
                     if (lastWristRaw) {
                         const jumpDist = getDistance(wristRaw, lastWristRaw);
-                        if (jumpDist > 0.35) { // 如果一瞬间发生屏幕宽度 35% 以上的跳跃位移
-                            lastWristRaw = wristRaw; // 记录新位置
-                            handPrevX = null; handPrevY = null; // 打断拖拽平滑过渡和模型旋转
-                            return; // 抛弃该帧渲染，等待焦点稳定
+                        if (jumpDist > 0.35) { 
+                            lastWristRaw = wristRaw; 
+                            handPrevX = null; handPrevY = null; 
+                            return; 
                         }
                     }
                     lastWristRaw = wristRaw;
 
-                    resetActivity(); // 📸 手势活动触发防空闲机制重置
+                    resetActivity(); 
 
                     overlayCtx.fillStyle = '#e5c583'; overlayCtx.strokeStyle = 'rgba(229, 197, 131, 0.6)'; overlayCtx.lineWidth = 3;
                     const connections = [[0,1], [1,2], [2,3], [3,4], [0,5], [5,6], [6,7], [7,8], [5,9], [9,10], [10,11], [11,12], [9,13], [13,14], [14,15], [15,16], [13,17], [17,18], [18,19], [19,20], [0,17]];
@@ -2565,10 +2611,18 @@
                     landmarks.forEach(pt => { overlayCtx.beginPath(); overlayCtx.arc(pt.x * overlayCanvas.width, pt.y * overlayCanvas.height, 4, 0, Math.PI * 2); overlayCtx.fill(); });
 
                     const palmJoint = landmarks[5], margin = 0.15; 
-                    const mappedX = (1 - (palmJoint.x - margin) / (1 - 2 * margin)) * window.innerWidth;
-                    const mappedY = ((palmJoint.y - margin) / (1 - 2 * margin)) * window.innerHeight;
+                    let mappedX = (1 - (palmJoint.x - margin) / (1 - 2 * margin)) * window.innerWidth;
+                    let mappedY = ((palmJoint.y - margin) / (1 - 2 * margin)) * window.innerHeight;
                     const sensVal = parseInt(document.getElementById('sensitivity-slider').value) / 100;
                     
+                    if (currentHoveredElement && !isFistAction) {
+                        const rect = currentHoveredElement.getBoundingClientRect();
+                        const btnCenterX = rect.left + rect.width / 2;
+                        const btnCenterY = rect.top + rect.height / 2;
+                        mappedX = mappedX * 0.4 + btnCenterX * 0.6; 
+                        mappedY = mappedY * 0.4 + btnCenterY * 0.6;
+                    }
+
                     targetCursorX = Math.max(0, Math.min(window.innerWidth, mappedX)); targetCursorY = Math.max(0, Math.min(window.innerHeight, mappedY));
                     cursorX += (targetCursorX - cursorX) * sensVal; cursorY += (targetCursorY - cursorY) * sensVal;
                     cursorEl.style.left = `${cursorX}px`; cursorEl.style.top = `${cursorY}px`;
@@ -2582,50 +2636,110 @@
                     if (isARMode) {
                         checkHoverCollision(cursorX, cursorY, isLandingActive);
                         if (isFist) { if (currentHoveredElement && currentHoveredElement.id === 'exit-ar-btn') { isFistAction = true; cursorEl.classList.add('fist'); handleGestureClick(currentHoveredElement); return; } if (arShutterState === 1) { arShutterState = 0; takeARPhoto(); } }
-                        if (isHandOpen) { arShutterState = 1; cursorEl.style.borderColor = "#10b981"; } else cursorEl.style.borderColor = "#e5c583";
+                        if (isHandOpen) { arShutterState = 1; cursorEl.style.borderColor = "#10b981"; } else cursorEl.style.borderColor = "rgba(245, 158, 11, 0.8)";
                         return; 
                     }
                     
+                    // ★ 拖拽对象全局判定逻辑
                     let activeScrollContainer = null;
+                    const isDetailViewActive = !detailView.classList.contains('hidden');
+
                     if (!isLandingActive) {
-                        if (!document.getElementById('category-selection-view').classList.contains('hidden')) activeScrollContainer = document.getElementById('category-cards-container');
-                        else if (!document.getElementById('main-gallery').classList.contains('hidden') && !isBatchSelectMode) activeScrollContainer = document.getElementById('mask-grid');
+                        if (!document.getElementById('category-selection-view').classList.contains('hidden')) {
+                            activeScrollContainer = document.getElementById('category-cards-container');
+                        } else if (!document.getElementById('main-gallery').classList.contains('hidden') && !isBatchSelectMode) {
+                            activeScrollContainer = document.getElementById('mask-grid');
+                        } else if (isDetailViewActive) {
+                            // 判定当前光标是在左侧画布区，还是右侧文本区
+                            const canvasContainer = document.getElementById('interaction-canvas-container');
+                            const rect = canvasContainer.getBoundingClientRect();
+                            const isOverCanvas = (cursorX >= rect.left && cursorX <= rect.right && cursorY >= rect.top && cursorY <= rect.bottom);
+                            
+                            if (!isOverCanvas) {
+                                // 在移动端详情页本身就是滚动容器，桌面端则是内部的 div
+                                activeScrollContainer = window.innerWidth < 768 ? detailView : detailView.querySelector('.md\\:overflow-y-auto');
+                            }
+                        }
                     }
 
+                    // ★ 核心修复：确保握拳时才进行 3D 旋转或页面滚动
                     if (isFist) { 
                         if (!isFistAction) { 
-                            isFistAction = true; cursorEl.classList.add('fist'); possibleClickElement = currentHoveredElement; 
-                            if (activeScrollContainer) { isDraggingScroll = true; dragStartCursorY = cursorY; dragStartCursorX = cursorX; dragStartScrollY = activeScrollContainer.scrollTop; activeScrollContainer.style.scrollBehavior = 'auto'; }
-                        } else if (isDraggingScroll && activeScrollContainer) { 
-                            let dy = cursorY - dragStartCursorY; 
-                            let dx = cursorX - dragStartCursorX;
-                            if (Math.abs(dy) > 15 || Math.abs(dx) > 15) possibleClickElement = null; 
+                            isFistAction = true; 
+                            cursorEl.classList.add('fist'); 
+                            possibleClickElement = currentHoveredElement; 
                             
-                            let dest = dragStartScrollY - dy * 2.5;
-                            const maxScroll = activeScrollContainer.scrollHeight - activeScrollContainer.clientHeight;
-                            activeScrollContainer.scrollTop = Math.max(0, Math.min(dest, maxScroll));
+                            // 1. 开始拖拽滚动
+                            if (activeScrollContainer) { 
+                                isDraggingScroll = true; 
+                                dragStartCursorY = cursorY; 
+                                dragStartCursorX = cursorX; 
+                                dragStartScrollY = activeScrollContainer.scrollTop; 
+                                activeScrollContainer.style.scrollBehavior = 'auto'; 
+                            }
+                            
+                            // 2. 开始模型旋转（仅在详情页左侧进行时）
+                            if (isDetailViewActive && !activeScrollContainer) {
+                                handPrevX = cursorX;
+                                handPrevY = cursorY;
+                            }
+                        } else {
+                            // 正在滚动
+                            if (isDraggingScroll && activeScrollContainer) { 
+                                let dy = cursorY - dragStartCursorY; 
+                                let dx = cursorX - dragStartCursorX;
+                                
+                                // 防抖：移动剧烈时作废潜在的误触点击
+                                if (Math.abs(dy) > 15 || Math.abs(dx) > 15) possibleClickElement = null; 
+                                
+                                let dest = dragStartScrollY - dy * 2.5;
+                                const maxScroll = activeScrollContainer.scrollHeight - activeScrollContainer.clientHeight;
+                                activeScrollContainer.scrollTop = Math.max(0, Math.min(dest, maxScroll));
+                            }
+                            // 正在旋转模型
+                            else if (isDetailViewActive && activeMaskIndex !== null && !activeScrollContainer) {
+                                if (handPrevX !== null && handPrevY !== null) {
+                                    let dx = cursorX - handPrevX, dy = cursorY - handPrevY;
+                                    
+                                    // 防误触
+                                    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) possibleClickElement = null;
+                                    
+                                    targetRotationY += dx * 0.02 * sensVal * 2; 
+                                    targetRotationX += dy * 0.02 * sensVal * 2; 
+                                    targetRotationX = Math.max(-1.2, Math.min(1.2, targetRotationX)); 
+                                    targetRotationY = Math.max(-1.5, Math.min(1.5, targetRotationY));
+                                }
+                                handPrevX = cursorX; 
+                                handPrevY = cursorY;
+                            }
                         }
                     } else {
+                        // ★ 核心修复：张开手掌时，一切交互动作彻底释放停止
                         if (isFistAction) { 
-                            isFistAction = false; cursorEl.classList.remove('fist'); 
-                            if (possibleClickElement && currentHoveredElement === possibleClickElement) handleGestureClick(possibleClickElement);
-                            possibleClickElement = null;
-                            if (isDraggingScroll) { isDraggingScroll = false; if (activeScrollContainer) activeScrollContainer.style.scrollBehavior = 'smooth'; } 
-                        }
-                        if (activeMaskIndex !== null && !isLandingActive) {
-                            if (handPrevX !== null && handPrevY !== null) {
-                                let dx = cursorX - handPrevX, dy = cursorY - handPrevY;
-                                targetRotationY += dx * 0.02 * sensVal * 2; targetRotationX += dy * 0.02 * sensVal * 2; 
-                                targetRotationX = Math.max(-1.2, Math.min(1.2, targetRotationX)); targetRotationY = Math.max(-1.5, Math.min(1.5, targetRotationY));
+                            isFistAction = false; 
+                            cursorEl.classList.remove('fist'); 
+                            
+                            if (possibleClickElement && currentHoveredElement === possibleClickElement) {
+                                handleGestureClick(possibleClickElement);
                             }
-                            handPrevX = cursorX; handPrevY = cursorY;
+                            possibleClickElement = null;
+                            
+                            if (isDraggingScroll) { 
+                                isDraggingScroll = false; 
+                                if (activeScrollContainer) activeScrollContainer.style.scrollBehavior = 'smooth'; 
+                            } 
+                            
+                            handPrevX = null;
+                            handPrevY = null;
                         }
                     }
+                    
+                    // 只有在没握拳（浏览状态）时才检测悬停效果，防止握拳拖拽时按钮乱闪
                     if (!isFist && !isARMode) checkHoverCollision(cursorX, cursorY, isLandingActive);
                 } else { 
                     handPrevX = null; 
                     handPrevY = null; 
-                    lastWristRaw = null; // 🌟 视野内完全无手时，重置跳跃锁
+                    lastWristRaw = null; 
                     arShutterState = 0; 
                 }
             }

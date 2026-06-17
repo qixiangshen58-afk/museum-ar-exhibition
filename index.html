@@ -19,18 +19,7 @@
     <!-- FontAwesome 图标 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- QRCode.js 用于生成二维码 -->
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-    <!-- MediaPipe 依赖: Hands (手势) & Face Mesh (脸部) -->
-    <script defer src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
-
-    <!-- Three.js 核心及 OBJLoader, MTLLoader -->
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+    <!-- 外部大型库改为按需加载以优化首屏（Three.js / MediaPipe / QRCode） -->
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Noto+Serif+SC:wght@300;400;700&display=swap');
@@ -214,13 +203,23 @@
                 <span class="text-[10px] md:text-[13px] font-bold tracking-widest drop-shadow-md">点击下方按钮进入；现场装置可开启手势后【拇指食指捏合】操作</span>
             </div>
 
-            <button id="enter-exhibition-btn" class="animate-reveal relative group cursor-pointer interactive-element overflow-hidden rounded-full scale-90 md:scale-100" style="animation-delay: 1.6s;" aria-label="开启展览">
-                <div class="absolute -inset-1 bg-gradient-to-r from-amber-500 to-red-600 rounded-full blur opacity-50 group-hover:opacity-100 transition duration-500"></div>
-                <div class="relative px-8 py-4 md:px-12 md:py-5 bg-stone-950/90 ring-1 ring-amber-500/60 rounded-full leading-none flex items-center gap-3 md:gap-4 backdrop-blur-md sweep-light">
-                    <span class="text-amber-300 font-bold tracking-[0.3em] text-sm md:text-lg">开启时空之门</span>
-                    <i class="fa-solid fa-arrow-right-long text-amber-500 group-hover:translate-x-4 transition-transform duration-500 text-sm md:text-base"></i>
-                </div>
-            </button>
+            <div class="animate-reveal flex flex-col md:flex-row items-center gap-4 md:gap-6" style="animation-delay: 1.6s;">
+                <button id="enter-exhibition-btn" class="relative group cursor-pointer interactive-element overflow-hidden rounded-full scale-90 md:scale-100" aria-label="开启展览">
+                    <div class="absolute -inset-1 bg-gradient-to-r from-amber-500 to-red-600 rounded-full blur opacity-50 group-hover:opacity-100 transition duration-500"></div>
+                    <div class="relative px-8 py-4 md:px-12 md:py-5 bg-stone-950/90 ring-1 ring-amber-500/60 rounded-full leading-none flex items-center gap-3 md:gap-4 backdrop-blur-md sweep-light">
+                        <span class="text-amber-300 font-bold tracking-[0.3em] text-sm md:text-lg">开启时空之门</span>
+                        <i class="fa-solid fa-arrow-right-long text-amber-500 group-hover:translate-x-4 transition-transform duration-500 text-sm md:text-base"></i>
+                    </div>
+                </button>
+                
+                <button id="landing-camera-btn" class="relative group cursor-pointer interactive-element overflow-hidden rounded-full scale-90 md:scale-100" aria-label="开启手势识别">
+                    <div class="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-cyan-600 rounded-full blur opacity-50 group-hover:opacity-100 transition duration-500"></div>
+                    <div class="relative px-8 py-4 md:px-10 md:py-5 bg-stone-950/90 ring-1 ring-emerald-500/60 rounded-full leading-none flex items-center gap-2 md:gap-3 backdrop-blur-md sweep-light">
+                        <i class="fa-solid fa-video text-emerald-400 group-hover:scale-110 transition-transform duration-500"></i>
+                        <span class="text-emerald-300 font-bold tracking-[0.2em] text-sm md:text-lg">开启视觉</span>
+                    </div>
+                </button>
+            </div>
         </div>
         <div id="landing-watermark" class="absolute bottom-6 md:bottom-10 text-stone-700 text-[8px] md:text-[9px] tracking-[0.2em] md:tracking-[0.4em] uppercase font-bold text-center w-full px-4">
             HEZHOU CULTURE MUSEUM DIGITAL EXHIBITION
@@ -348,6 +347,19 @@
             <div id="interaction-canvas-container" class="relative flex items-center justify-center w-full md:w-[60%] h-[70vh] md:h-full shrink-0 bg-gradient-to-br from-[#050507] via-[#0a0a0c] to-[#1a140d] overflow-hidden cursor-grab active:cursor-grabbing">
                 <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-amber-600/20 rounded-full blur-[60px] md:blur-[100px] pointer-events-none mix-blend-screen"></div>
                 <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-transparent via-black/60 to-[#050507] pointer-events-none"></div>
+                
+                <!-- 🌟 双手缩放实时指示器 -->
+                <div id="dual-pinch-indicator" class="hidden absolute top-6 left-1/2 transform -translate-x-1/2 z-30 bg-black/80 backdrop-blur-xl px-6 py-4 rounded-full border border-emerald-500/60 shadow-[0_0_30px_rgba(16,185,129,0.4)] flex flex-col items-center gap-2 animate-fade-in-up">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-hand-fist text-emerald-400 animate-pulse text-lg"></i>
+                        <span class="text-emerald-300 font-bold text-[12px] md:text-[13px] tracking-widest">双手缩放中</span>
+                        <i class="fa-solid fa-hand-fist text-emerald-400 animate-pulse text-lg transform scale-x-[-1]"></i>
+                    </div>
+                    <div class="w-32 md:w-40 h-1.5 bg-stone-800 rounded-full overflow-hidden border border-emerald-600/40">
+                        <div id="dual-pinch-scale-bar" class="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-100 shadow-[0_0_10px_rgba(16,185,129,0.8)]" style="width: 50%;"></div>
+                    </div>
+                    <span id="dual-pinch-scale-text" class="text-emerald-200 font-mono font-bold text-[11px] md:text-[12px] tracking-wider">100%</span>
+                </div>
                 
                 <div class="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-2 md:px-8 md:py-3 rounded-full border border-amber-500/30 text-[9px] md:text-[11px] text-amber-200 flex items-center gap-2 md:gap-3 z-20 shadow-2xl w-max max-w-[90%]">
                     <i class="fa-solid fa-arrows-up-down-left-right animate-pulse text-amber-500"></i>
@@ -828,7 +840,49 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 按需加载大体积外部脚本的通用辅助函数
+            function loadScriptOnce(src, attrs = {}) {
+                return new Promise((resolve, reject) => {
+                    if (document.querySelector(`script[data-src="${src}"]`) || document.querySelector(`script[src="${src}"]`)) return resolve();
+                    const s = document.createElement('script');
+                    s.setAttribute('data-src', src);
+                    s.src = src;
+                    s.async = true;
+                    Object.keys(attrs).forEach(k => s.setAttribute(k, attrs[k]));
+                    s.onload = () => resolve();
+                    s.onerror = (e) => reject(new Error('Failed to load ' + src));
+                    document.head.appendChild(s);
+                });
+            }
+
+            // 专门加载 Three.js 与其 OBJ/MTLLoader（按需）
+            let threeLoaded = false;
+            async function ensureThreeLoaded() {
+                if (threeLoaded) return;
+                await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
+                await loadScriptOnce('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js');
+                await loadScriptOnce('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js');
+                threeLoaded = true;
+            }
+
+            // MediaPipe 按需加载（camera_utils / hands / face_mesh）
+            let mediaPipeLoaded = false;
+            async function ensureMediaPipeLoaded() {
+                if (mediaPipeLoaded) return;
+                await loadScriptOnce('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js', {crossorigin: 'anonymous'});
+                await loadScriptOnce('https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js', {crossorigin: 'anonymous'});
+                await loadScriptOnce('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js', {crossorigin: 'anonymous'});
+                mediaPipeLoaded = true;
+            }
+
+            // QRCode 按需加载
+            let qrcodeLoaded = false;
+            async function ensureQRCodeLoaded() {
+                if (qrcodeLoaded) return;
+                await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js');
+                qrcodeLoaded = true;
+            }
             // --- 🤖 看门狗机制变量 (Watchdog Variables) ---
             let globalIdleTimer = null;
             let landingAnimTimer = null;
@@ -841,7 +895,7 @@
             const apiKey = window.GEMINI_API_KEY || ""; // 生产环境建议使用后端代理，不要把密钥写入前端源码
             const geminiProxyUrl = window.GEMINI_PROXY_URL || "";
             const geminiModel = window.GEMINI_MODEL || "gemini-2.5-flash";
-            const adminCode = window.MUSEUM_ADMIN_CODE || "HZ-MUSEUM-2026"; // 本地演示授权码；正式上线请改为后端鉴权
+            const adminCode = window.MUSEUM_ADMIN_CODE || "041026"; // 本地演示授权码；正式上线请改为后端鉴权
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'museum-gesture-mask';
             
             // 已清空默认的莫须有展馆和分类，留给馆长后期在后台自由配置
@@ -963,6 +1017,10 @@
             let targetRotationX = 0; let targetRotationY = 0;
             let currentRotationX = 0; let currentRotationY = 0;
             let currentFloatY = 0;
+            // 双手缩放控制
+            let targetScale = 1.0;
+            let currentScale = 1.0;
+            window.dualPinchActive = false;
 
             let isARMode = false;
             let faceMesh;
@@ -1302,7 +1360,8 @@
             });
 
             // --- Three.js 初始化 ---
-            function initThreeJS() {
+            async function initThreeJS() {
+                await ensureThreeLoaded();
                 scene = new THREE.Scene();
                 threeCamera = new THREE.PerspectiveCamera(45, container3d.clientWidth / container3d.clientHeight, 0.1, 1000);
                 threeCamera.position.z = 6;
@@ -1577,17 +1636,26 @@
                 }
                 
                 const isDetailVisible = !detailView.classList.contains('hidden');
-                if (isDetailVisible && !isARMode) {
-                    targetRotationX *= 0.92; targetRotationY *= 0.92;
+                    if (isDetailVisible && !isARMode) {
+                    // 🌟 改进：只在非捏合状态时自动衰减旋转，捏合时保持用户转动的角度不变
+                    if (!isPinchAction) {
+                        targetRotationX *= 0.92; targetRotationY *= 0.92;
+                    }
                     currentRotationX += (targetRotationX - currentRotationX) * 0.15;
                     currentRotationY += (targetRotationY - currentRotationY) * 0.15;
                     currentFloatY = Math.sin(Date.now() * 0.002) * 8; 
                     
                     const imgEl = document.getElementById('detail-mask-img');
-                    if (imgEl && !imgEl.classList.contains('hidden')) imgEl.style.transform = `translateY(${currentFloatY}px) rotateX(${-currentRotationX}rad) rotateY(${currentRotationY}rad)`;
+                    // 平滑缩放过渡
+                    currentScale += (targetScale - currentScale) * 0.12;
+                    if (imgEl && !imgEl.classList.contains('hidden')) imgEl.style.transform = `translateY(${currentFloatY}px) rotateX(${-currentRotationX}rad) rotateY(${currentRotationY}rad) scale(${currentScale})`;
                     if (typeof currentModel !== 'undefined' && currentModel) { 
                         currentModel.rotation.y = currentRotationY; currentModel.rotation.x = currentRotationX; 
                         currentModel.position.y = Math.sin(Date.now() * 0.002) * 0.15 + 0.42; 
+                        if (currentModel.userData && currentModel.userData.baseScale) {
+                            const s = currentModel.userData.baseScale * currentScale;
+                            currentModel.scale.set(s, s, s);
+                        }
                         if (typeof renderer !== 'undefined' && renderer) renderer.render(scene, threeCamera); 
                     }
                 }
@@ -1896,6 +1964,13 @@
                 document.getElementById('ai-tts-btn').classList.add('hidden');
                 document.getElementById('ai-chat-input').value = '';
                 
+                // 🌟 重置双手缩放状态
+                window.dualPinchActive = false;
+                window.dualPinchStartDistance = null;
+                window.dualPinchStartScale = null;
+                window.dualPinchPrevFactor = null;
+                document.getElementById('dual-pinch-indicator').classList.add('hidden');
+                
                 if(window.speechSynthesis) window.speechSynthesis.cancel();
                 if (currentAiAudio) { currentAiAudio.pause(); currentAiAudio = null; }
                 currentAiStoryText = "";
@@ -1916,6 +1991,7 @@
                     disposeThreeObject(currentModel);
                     scene.remove(currentModel); 
                     currentModel = null; 
+                    currentScale = 1.0; targetScale = 1.0;
                 }
                 
                 arSessionId++; // 使得之前的加载作废
@@ -1927,16 +2003,25 @@
                     load3DModel(mask.objUrl, mask.mtlUrl, mask.textureUrl, (modelGroup) => {
                         if (currentSession !== arSessionId) return; // 🌟 拦截已被用户抛弃的加载任务
                         const scale = 3.5 / modelGroup.userData.originalSize;
-                        modelGroup.scale.set(scale, scale, scale); currentModel = modelGroup; scene.add(currentModel);
+                        modelGroup.scale.set(scale, scale, scale);
+                        modelGroup.userData.baseScale = scale; // 记录基础缩放，后续由双手缩放乘以此值
+                        currentScale = 1.0; targetScale = 1.0;
+                        currentModel = modelGroup; scene.add(currentModel);
                     });
                 } else {
                     document.getElementById('three-container').classList.add('hidden'); imgEl.classList.remove('hidden');
                     document.getElementById('interaction-hint').innerHTML = `<i class="fa-regular fa-image text-amber-500"></i> 当前为 2D 悬浮影像`;
                     imgEl.src = safeImageUrl(mask.image); 
                     imgEl.onerror = function() { this.src = fallbackSVG; };
+                    currentScale = 1.0; targetScale = 1.0; imgEl.style.transform = '';
                 }
                 targetRotationX = 0; targetRotationY = 0; currentRotationX = 0; currentRotationY = 0;
                 document.getElementById('delete-mask-btn').dataset.confirm = "false"; document.getElementById('delete-mask-btn').innerHTML = '<i class="fa-solid fa-trash-can text-sm"></i>';
+                
+                // 🌟 显示游客提示词（握拳进入新逻辑）
+                if (cameraActive) {
+                    showToast("💡 提示：【单手捏合】旋转/拖拽 • 【双手捏合】放大/缩小 • 【握拳确认】进入详情", "info");
+                }
             }
             
             function goBackToGallery() { 
@@ -2062,7 +2147,7 @@
             let currentPostcardDataUrl = null;
             let currentMaskObj = null;
 
-            function showPostcardModal(photoDataUrl, maskObj, aiText) {
+            async function showPostcardModal(photoDataUrl, maskObj, aiText) {
                 currentPostcardDataUrl = photoDataUrl;
                 currentMaskObj = maskObj;
                 
@@ -2080,14 +2165,16 @@
 
                 const qrContent = `ID:${maskObj.serial}`;
                 const qrContainer = document.getElementById('postcard-qrcode');
-                qrContainer.innerHTML = ''; 
-                
-                new QRCode(qrContainer, {
-                    text: qrContent,
-                    width: 128, height: 128, 
-                    colorDark : "#000000", colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.L
-                });
+                qrContainer.innerHTML = '';
+                await ensureQRCodeLoaded();
+                try {
+                    new QRCode(qrContainer, {
+                        text: qrContent,
+                        width: 128, height: 128,
+                        colorDark : "#000000", colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.L
+                    });
+                } catch (e) { console.warn('QRCode init failed', e); }
 
                 postcardModal.classList.remove('hidden');
                 setTimeout(() => { postcardModal.classList.remove('opacity-0', 'scale-95'); }, 50);
@@ -2231,6 +2318,7 @@
 
             // --- AR 脸部识别与事件 ---
             async function initFaceMesh() {
+                await ensureMediaPipeLoaded();
                 try {
                     faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
                     faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: false, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
@@ -2257,12 +2345,37 @@
                 const tempCanvas = document.createElement('canvas'); tempCanvas.width = arCanvas.width; tempCanvas.height = arCanvas.height;
                 const tCtx = tempCanvas.getContext('2d'); tCtx.translate(tempCanvas.width, 0); tCtx.scale(-1, 1); 
                 
-                tCtx.drawImage(document.getElementById('ar-bg-video'), 0, 0, tempCanvas.width, tempCanvas.height); 
+                // 🌟 修复：保持视频宽高比，避免照片变形
+                const video = document.getElementById('ar-bg-video');
+                const videoWidth = video.videoWidth > 0 ? video.videoWidth : tempCanvas.width;
+                const videoHeight = video.videoHeight > 0 ? video.videoHeight : tempCanvas.height;
+                tCtx.drawImage(video, 0, 0, videoWidth, videoHeight);
                 tCtx.drawImage(arCanvas, 0, 0); 
                 
                 const activeMask = masksData[activeMaskIndex];
                 if (activeMask && activeMask.objUrl && typeof arRenderer !== 'undefined' && arRenderer && typeof arCurrentModel !== 'undefined' && arCurrentModel && arCurrentModel.visible) {
-                    tCtx.drawImage(arRenderer.domElement, 0, 0, tempCanvas.width, tempCanvas.height);
+                    // 🌟 修复3D渲染变形：保持arRenderer的宽高比不被拉伸
+                    const rendererCanvas = arRenderer.domElement;
+                    const rendererWidth = rendererCanvas.width;
+                    const rendererHeight = rendererCanvas.height;
+                    const rendererAspect = rendererWidth / rendererHeight;
+                    const canvasAspect = tempCanvas.width / tempCanvas.height;
+                    
+                    let drawWidth, drawHeight, drawX, drawY;
+                    if (rendererAspect > canvasAspect) {
+                        // 3D渲染器更宽，按高度适配
+                        drawHeight = tempCanvas.height;
+                        drawWidth = drawHeight * rendererAspect;
+                        drawX = (tempCanvas.width - drawWidth) / 2;
+                        drawY = 0;
+                    } else {
+                        // 3D渲染器更窄，按宽度适配
+                        drawWidth = tempCanvas.width;
+                        drawHeight = drawWidth / rendererAspect;
+                        drawX = 0;
+                        drawY = (tempCanvas.height - drawHeight) / 2;
+                    }
+                    tCtx.drawImage(rendererCanvas, drawX, drawY, drawWidth, drawHeight);
                 }
 
                 const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.9);
@@ -2615,6 +2728,15 @@
                 clearTimeout(landingAnimTimer);
                 resetActivity();
             });
+            
+            // 🌟 Landing页面开启视觉/摄像头按钮
+            document.getElementById('landing-camera-btn').addEventListener('click', async () => {
+                soundSynth.playClick();
+                const ready = await initializeHandsDetection();
+                if (ready) {
+                    showToast('✨ 手势识别已激活，可进入展览使用手势操作', 'success');
+                }
+            });
 
             document.getElementById('open-add-modal-btn').addEventListener('click', () => { soundSynth.playClick(); document.getElementById('add-modal').classList.remove('hidden'); });
             document.getElementById('cancel-add').addEventListener('click', () => { soundSynth.playClick(); document.getElementById('add-modal').classList.add('hidden'); });
@@ -2812,11 +2934,12 @@
                 statusText.innerText = "激活 AI 视觉..."; statusDot.className = "w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-amber-500 animate-pulse";
                 
                 try {
+                    await ensureMediaPipeLoaded();
                     const hands = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
                     handDetector = hands;
                     
                     hands.setOptions({ 
-                        maxNumHands: 1, 
+                        maxNumHands: 2, 
                         modelComplexity: 1, 
                         minDetectionConfidence: 0.78, 
                         minTrackingConfidence: 0.76 
@@ -2848,6 +2971,9 @@
                     cursorEl.classList.remove('hidden');
                     document.getElementById('webcam-container').classList.remove('hidden');
                     setCameraButtonActive(true);
+                    
+                    // 🌟 显示握拳进入的交互提示
+                    showToast("✊ 握拳进入展品详情 • 【捏合】翻页和旋转 • 【双手捏合】放大/缩小", "info");
                     return true;
                 } catch(e) {
                     console.error("AI 模型加载失败", e);
@@ -3042,32 +3168,26 @@
                 });
             }
 
-            function confirmMaskDoublePinch(index, targetEl) {
+            // 🌟 改进的握拳检测与进入逻辑（替代双捏合）
+            let lastFistDetectionTime = 0;
+            let wasFistingInLastFrame = false; // 追踪前一帧的握拳状态
+            const FIST_DEBOUNCE_MS = 300; // 握拳防抖时间（避免连续触发）
+
+            function handleFistGestureToEnterMask(targetEl) {
                 const now = performance.now();
-                const confirmed = lastMaskGestureTapIndex === index && now - lastMaskGestureTapAt <= MASK_DOUBLE_TAP_MS;
-
-                if (confirmed) {
-                    lastMaskGestureTapIndex = null;
-                    lastMaskGestureTapAt = 0;
-                    clearMaskGesturePending();
-                    return true;
+                if (now - lastFistDetectionTime < FIST_DEBOUNCE_MS) return; // 防抖
+                
+                if (isMaskCardGestureTarget(targetEl)) {
+                    const targetIndex = parseInt(targetEl.dataset.index);
+                    soundSynth.playClick();
+                    showToast('✊ 握拳确认进入详情', 'success');
+                    selectMask(targetIndex);
+                    lastFistDetectionTime = now;
+                } else if (targetEl) {
+                    // 握拳在其他按钮上也能触发点击
+                    handleGestureClick(targetEl);
+                    lastFistDetectionTime = now;
                 }
-
-                lastMaskGestureTapIndex = index;
-                lastMaskGestureTapAt = now;
-                clearMaskGesturePending(targetEl);
-                if (targetEl) targetEl.classList.add('gesture-pending-pinch');
-                showToast('再次捏合进入单独展示', 'info');
-
-                setTimeout(() => {
-                    if (lastMaskGestureTapIndex === index && performance.now() - lastMaskGestureTapAt >= MASK_DOUBLE_TAP_MS) {
-                        lastMaskGestureTapIndex = null;
-                        lastMaskGestureTapAt = 0;
-                        clearMaskGesturePending();
-                    }
-                }, MASK_DOUBLE_TAP_MS + 60);
-
-                return false;
             }
             
             function onHandResults(results) {
@@ -3075,10 +3195,31 @@
                 const isLandingActive = !document.getElementById('landing-screen').classList.contains('opacity-0');
 
                 if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                    const landmarks = results.multiHandLandmarks[0]; 
-                    
-                    const wristRaw = landmarks[0];
-                    const handScale = getStableHandScale(landmarks);
+                        const handsLandmarks = results.multiHandLandmarks || [];
+                        // 🌟 改进的多手排序逻辑：首先基于 handedness，后备基于 wrist.x
+                        let orderedHands = handsLandmarks;
+                        if (handsLandmarks.length >= 2) {
+                            const pairs = handsLandmarks.map((lm, i) => {
+                                const handedness = results.multiHandedness && results.multiHandedness[i] && results.multiHandedness[i].label ? results.multiHandedness[i].label : null;
+                                return { lm, handedness, wristX: lm[0].x };
+                            });
+                            
+                            // 按 handedness 排序，如果 handedness 相同或为 null，则按 wrist.x 排序（左手 x < 右手 x）
+                            pairs.sort((a, b) => {
+                                if (a.handedness !== null && b.handedness !== null) {
+                                    if (a.handedness === 'Left') return -1;
+                                    if (b.handedness === 'Left') return 1;
+                                }
+                                // 后备：按 wrist.x 排序（左手应该在左边，x 值较小）
+                                return a.wristX - b.wristX;
+                            });
+                            orderedHands = pairs.map(p => p.lm);
+                        }
+
+                        const landmarks = orderedHands[0];
+
+                        const wristRaw = landmarks && landmarks[0];
+                        const handScale = landmarks ? getStableHandScale(landmarks) : 0;
                     
                     if (handScale < PINCH_CONFIG.minHandScale) {
                         resetPinchTracking();
@@ -3097,6 +3238,88 @@
 
                     resetActivity(); 
 
+                    // --- 🌟 优化的双手捏合缩放逻辑 ---
+                    // 当检测到第二只手同时捏合时，使用两只手指捏合中心之间的距离变化来控制缩放
+                    let dualHandled = false;
+                    if (orderedHands.length >= 2) {
+                        try {
+                            const landmarks2 = orderedHands[1];
+                            const wrist2 = landmarks2[0];
+                            const handScale2 = getStableHandScale(landmarks2);
+                            
+                            // 🌟 添加双手有效性验证：检查手的缩放是否都足够大
+                            const bothHandsScaleOK = handScale > PINCH_CONFIG.minHandScale && handScale2 > PINCH_CONFIG.minHandScale;
+                            // 🌟 添加手之间距离约束：太近（< 0.15）或太远（> 0.8）都过滤掉（避免误触发）
+                            const wristDist = getDistance(wristRaw, wrist2);
+                            const handsDistanceOK = wristDist >= 0.15 && wristDist <= 0.85;
+                            
+                            if (!bothHandsScaleOK || !handsDistanceOK) {
+                                // 双手条件不满足，清除双手标志
+                                if (window.dualPinchActive) {
+                                    window.dualPinchActive = false;
+                                    document.getElementById('dual-pinch-indicator').classList.add('hidden');
+                                }
+                            } else {
+                                // 双手条件满足，进行捏合检查
+                                const g1 = evaluatePinchGesture(landmarks, handScale);
+                                const g2 = evaluatePinchGesture(landmarks2, handScale2);
+                                const pinchCenter1 = averagePoint([landmarks[4], landmarks[8]]);
+                                const pinchCenter2 = averagePoint([landmarks2[4], landmarks2[8]]);
+                                const bothPinch = g1.trackable && g2.trackable && g1.pinchRatio < PINCH_CONFIG.startRatio && g2.pinchRatio < PINCH_CONFIG.startRatio;
+
+                                if (bothPinch) {
+                                    // 🌟 双手捏合激活
+                                    if (!window.dualPinchActive) {
+                                        window.dualPinchActive = true;
+                                        window.dualPinchStartDistance = getDistance(pinchCenter1, pinchCenter2) || 0.0001;
+                                        window.dualPinchStartScale = targetScale || 1;
+                                        window.dualPinchFrameCount = 0;
+                                        // 显示双手检测提示
+                                        showToast('🔍 检测到双手捏合，正在启用放大/缩小', 'success');
+                                        document.getElementById('dual-pinch-indicator').classList.remove('hidden');
+                                    } else {
+                                        window.dualPinchFrameCount = (window.dualPinchFrameCount || 0) + 1;
+                                        const nowDist = getDistance(pinchCenter1, pinchCenter2) || 0.0001;
+                                        const rawFactor = nowDist / (window.dualPinchStartDistance || 0.0001);
+                                        // 🌟 添加缩放平滑处理（低通滤波防止抖动）
+                                        const prevFactor = window.dualPinchPrevFactor || rawFactor;
+                                        const smoothFactor = prevFactor * 0.7 + rawFactor * 0.3; // 平滑系数
+                                        window.dualPinchPrevFactor = smoothFactor;
+                                        
+                                        const newScale = Math.max(0.4, Math.min(4.0, (window.dualPinchStartScale || 1) * smoothFactor));
+                                        targetScale = newScale;
+                                        
+                                        // 🌟 显示缩放百分比指示
+                                        const scalePercent = Math.round(newScale * 100);
+                                        const indicator = document.getElementById('dual-pinch-indicator');
+                                        if (indicator && !indicator.classList.contains('hidden')) {
+                                            const scaleBar = indicator.querySelector('#dual-pinch-scale-bar');
+                                            const scaleText = indicator.querySelector('#dual-pinch-scale-text');
+                                            if (scaleBar) scaleBar.style.width = `${Math.max(10, Math.min(90, (newScale - 0.4) / 3.6 * 100))}%`;
+                                            if (scaleText) scaleText.innerText = `${scalePercent}%`;
+                                        }
+                                    }
+                                    // 标记已处理，防止单手捏合触发旋转/拖拽
+                                    dualHandled = true;
+                                    isPinchAction = true; if (cursorEl) cursorEl.classList.add('pinch');
+                                } else {
+                                    if (window.dualPinchActive) {
+                                        window.dualPinchActive = false;
+                                        window.dualPinchPrevFactor = null;
+                                        document.getElementById('dual-pinch-indicator').classList.add('hidden');
+                                    }
+                                }
+                            }
+                        } catch (e) { console.warn('Dual pinch check error', e); }
+                    } else {
+                        // 只有一只手或没有手，清除双手标志
+                        if (window.dualPinchActive) {
+                            window.dualPinchActive = false;
+                            window.dualPinchPrevFactor = null;
+                            document.getElementById('dual-pinch-indicator').classList.add('hidden');
+                        }
+                    }
+
                     overlayCtx.fillStyle = '#e5c583'; overlayCtx.strokeStyle = 'rgba(229, 197, 131, 0.6)'; overlayCtx.lineWidth = 3;
                     const connections = [[0,1], [1,2], [2,3], [3,4], [0,5], [5,6], [6,7], [7,8], [5,9], [9,10], [10,11], [11,12], [9,13], [13,14], [14,15], [15,16], [13,17], [17,18], [18,19], [19,20], [0,17]];
                     connections.forEach(([p1, p2]) => { overlayCtx.beginPath(); overlayCtx.moveTo(landmarks[p1].x * overlayCanvas.width, landmarks[p1].y * overlayCanvas.height); overlayCtx.lineTo(landmarks[p2].x * overlayCanvas.width, landmarks[p2].y * overlayCanvas.height); overlayCtx.stroke(); });
@@ -3111,8 +3334,9 @@
                         const rect = currentHoveredElement.getBoundingClientRect();
                         const btnCenterX = rect.left + rect.width / 2;
                         const btnCenterY = rect.top + rect.height / 2;
-                        mappedX = mappedX * 0.4 + btnCenterX * 0.6; 
-                        mappedY = mappedY * 0.4 + btnCenterY * 0.6;
+                        // 降低对元素中心的吸附权重，减少光标粘连感（更丝滑的响应）
+                        mappedX = mappedX * 0.85 + btnCenterX * 0.15;
+                        mappedY = mappedY * 0.85 + btnCenterY * 0.15;
                     }
 
                     targetCursorX = Math.max(0, Math.min(window.innerWidth, mappedX)); targetCursorY = Math.max(0, Math.min(window.innerHeight, mappedY));
@@ -3120,8 +3344,17 @@
                     cursorEl.style.left = `${cursorX}px`; cursorEl.style.top = `${cursorY}px`;
                     
                     const pinchState = updatePinchState(landmarks, handScale);
-                    const isPinching = pinchState.isPinching;
+                    // 如果双手捏合已处理缩放，则标记为双手缩放，避免单手捏合触发旋转/滚动
+                    const isDualPinch = dualHandled || (window.dualPinchActive === true);
+                    const isPinching = pinchState.isPinching || isDualPinch;
                     if (pinchState.cancelClick) possibleClickElement = null;
+                    
+                    // 🌟 握拳检测：只在握拳状态**变化**时触发（从未握拳→握拳），避免每帧重复调用
+                    const isFisting = pinchState.isFist === true;
+                    if (isFisting && !wasFistingInLastFrame && currentHoveredElement) {
+                        handleFistGestureToEnterMask(currentHoveredElement);
+                    }
+                    wasFistingInLastFrame = isFisting;
                     
                     if (isARMode) {
                         checkHoverCollision(cursorX, cursorY, isLandingActive);
@@ -3173,56 +3406,61 @@
 
                     // ★ 核心修复：确保捏合时才进行 3D 旋转或页面滚动
                     if (isPinching) { 
-                        if (!isPinchAction) { 
-                            isPinchAction = true; 
-                            cursorEl.classList.add('pinch'); 
-                            gestureLockedTarget = currentHoveredElement;
-                            gestureStartedAsClick = currentTargetPrefersClick;
-                            possibleClickElement = gestureLockedTarget; 
-                            
-                            // 1. 开始拖拽滚动
-                            if (activeScrollContainer && !gestureStartedAsClick) { 
-                                isDraggingScroll = true; 
-                                dragStartCursorY = cursorY; 
-                                dragStartCursorX = cursorX; 
-                                dragStartScrollY = activeScrollContainer.scrollTop; 
-                                activeScrollContainer.style.scrollBehavior = 'auto'; 
-                            }
-                            
-                            // 2. 开始模型旋转（仅在详情页左侧进行时）
-                            if (isDetailViewActive && !activeScrollContainer && !gestureStartedAsClick) {
-                                handPrevX = cursorX;
-                                handPrevY = cursorY;
-                            }
+                        if (isDualPinch) {
+                            // 双手缩放时，仅调整缩放，不触发其它交互
+                            cursorEl.style.borderColor = "#10b981";
                         } else {
-                            // 正在滚动
-                            if (isDraggingScroll && activeScrollContainer) { 
-                                let dy = cursorY - dragStartCursorY; 
-                                let dx = cursorX - dragStartCursorX;
-                                
-                                // 防抖：移动剧烈时作废潜在的误触点击
-                                const tapTolerance = isMaskCardGestureTarget(possibleClickElement) ? GESTURE_TAP_TOLERANCE : 22;
-                                if (Math.abs(dy) > tapTolerance || Math.abs(dx) > tapTolerance) possibleClickElement = null; 
-                                
-                                let dest = dragStartScrollY - dy * 2.5;
-                                const maxScroll = activeScrollContainer.scrollHeight - activeScrollContainer.clientHeight;
-                                activeScrollContainer.scrollTop = Math.max(0, Math.min(dest, maxScroll));
-                            }
-                            // 正在旋转模型
-                            else if (isDetailViewActive && activeMaskIndex !== null && !activeScrollContainer && !gestureStartedAsClick) {
-                                if (handPrevX !== null && handPrevY !== null) {
-                                    let dx = cursorX - handPrevX, dy = cursorY - handPrevY;
-                                    
-                                    // 防误触
-                                    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) possibleClickElement = null;
-                                    
-                                    targetRotationY += dx * 0.02 * sensVal * 2; 
-                                    targetRotationX += dy * 0.02 * sensVal * 2; 
-                                    targetRotationX = Math.max(-1.2, Math.min(1.2, targetRotationX)); 
-                                    targetRotationY = Math.max(-1.5, Math.min(1.5, targetRotationY));
+                            if (!isPinchAction) { 
+                                isPinchAction = true; 
+                                cursorEl.classList.add('pinch'); 
+                                gestureLockedTarget = currentHoveredElement;
+                                gestureStartedAsClick = currentTargetPrefersClick;
+                                possibleClickElement = gestureLockedTarget; 
+
+                                // 1. 开始拖拽滚动
+                                if (activeScrollContainer && !gestureStartedAsClick) { 
+                                    isDraggingScroll = true; 
+                                    dragStartCursorY = cursorY; 
+                                    dragStartCursorX = cursorX; 
+                                    dragStartScrollY = activeScrollContainer.scrollTop; 
+                                    activeScrollContainer.style.scrollBehavior = 'auto'; 
                                 }
-                                handPrevX = cursorX; 
-                                handPrevY = cursorY;
+
+                                // 2. 开始模型旋转（仅在详情页左侧进行时）
+                                if (isDetailViewActive && !activeScrollContainer && !gestureStartedAsClick) {
+                                    handPrevX = cursorX;
+                                    handPrevY = cursorY;
+                                }
+                            } else {
+                                // 正在滚动
+                                if (isDraggingScroll && activeScrollContainer) { 
+                                    let dy = cursorY - dragStartCursorY; 
+                                    let dx = cursorX - dragStartCursorX;
+                                    
+                                    // 防抖：移动剧烈时作废潜在的误触点击
+                                    const tapTolerance = isMaskCardGestureTarget(possibleClickElement) ? GESTURE_TAP_TOLERANCE : 22;
+                                    if (Math.abs(dy) > tapTolerance || Math.abs(dx) > tapTolerance) possibleClickElement = null; 
+                                    
+                                    let dest = dragStartScrollY - dy * 2.5;
+                                    const maxScroll = activeScrollContainer.scrollHeight - activeScrollContainer.clientHeight;
+                                    activeScrollContainer.scrollTop = Math.max(0, Math.min(dest, maxScroll));
+                                }
+                                // 正在旋转模型
+                                else if (isDetailViewActive && activeMaskIndex !== null && !activeScrollContainer && !gestureStartedAsClick) {
+                                    if (handPrevX !== null && handPrevY !== null) {
+                                        let dx = cursorX - handPrevX, dy = cursorY - handPrevY;
+                                        
+                                        // 防误触
+                                        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) possibleClickElement = null;
+                                        
+                                        targetRotationY += dx * 0.02 * sensVal * 2; 
+                                        targetRotationX += dy * 0.02 * sensVal * 2; 
+                                        targetRotationX = Math.max(-1.2, Math.min(1.2, targetRotationX)); 
+                                        targetRotationY = Math.max(-1.5, Math.min(1.5, targetRotationY));
+                                    }
+                                    handPrevX = cursorX; 
+                                    handPrevY = cursorY;
+                                }
                             }
                         }
                     } else {
@@ -3242,7 +3480,14 @@
                             if (isDraggingScroll) { 
                                 isDraggingScroll = false; 
                                 if (activeScrollContainer) activeScrollContainer.style.scrollBehavior = 'smooth'; 
-                            } 
+                            }
+                            
+                            // 🌟 改进：捏合结束时，模型自动回到正面（保持缩放大小）
+                            if (isDetailViewActive && activeMaskIndex !== null) {
+                                targetRotationX = 0;
+                                targetRotationY = 0;
+                                // 不重置 targetScale，保持捏合时改变的缩放
+                            }
                             
                             handPrevX = null;
                             handPrevY = null;
@@ -3288,7 +3533,8 @@
                             if (isBatchSelectMode) {
                                 toggleBatchSelection(targetIndex);
                             } else if (isMaskCardGestureTarget(targetEl)) {
-                                if (confirmMaskDoublePinch(targetIndex, targetEl)) selectMask(targetIndex);
+                                // 🌟 改进：捏合点击卡片时直接进入（握拳是主要进入方式）
+                                selectMask(targetIndex);
                             } else {
                                 selectMask(targetIndex);
                             }
@@ -3311,7 +3557,7 @@
 
             // --- 🌟 真正的初始化执行入口 🌟 ---
             showEnvironmentWarningIfNeeded();
-            initThreeJS(); 
+            await initThreeJS(); 
             
             // 启动外部数据驱动加载
             loadExhibitionData().then(() => {

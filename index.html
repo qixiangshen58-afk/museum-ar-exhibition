@@ -2,25 +2,35 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>上古遗音 - 傩戏木雕面具智能交互大展</title>
+    <meta name="description" content="上古遗音：贺州文化博物馆傩戏木雕面具数字化互动展，支持 3D 鉴赏、AI 导览、AR 试戴与留影分享。">
+    <meta name="theme-color" content="#050507">
+    <meta property="og:title" content="上古遗音 - 傩戏木雕面具智能交互大展">
+    <meta property="og:description" content="以数字技术重访贺州傩戏木雕面具，体验 3D 文物鉴赏、AI 导览与 AR 全息试戴。">
+    <meta property="og:type" content="website">
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome 图标 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- QRCode.js 用于生成二维码 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <!-- MediaPipe 依赖: Hands (手势) & Face Mesh (脸部) -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 
     <!-- Three.js 核心及 OBJLoader, MTLLoader -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Noto+Serif+SC:wght@300;400;700&display=swap');
@@ -29,10 +39,50 @@
             font-family: 'Noto Serif SC', serif;
             background-color: #050507; 
             color: #e5c583;
-            overflow: hidden;
-            user-select: none;
-            overscroll-behavior: none; 
+            overflow-x: hidden;
+            overflow-y: auto;
+            user-select: text;
+            overscroll-behavior-y: auto; 
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        button, input, select, textarea, .interactive-element {
+            touch-action: manipulation;
+        }
+
+        button, .interactive-element {
+            min-height: 44px;
+        }
+
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible,
+        .interactive-element:focus-visible {
+            outline: 2px solid #f59e0b;
+            outline-offset: 3px;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+            }
         }
         
         .accent-text { font-family: 'Cinzel', 'Noto Serif SC', serif; }
@@ -82,16 +132,21 @@
         #custom-cursor {
             position: fixed; width: 44px; height: 44px; border-radius: 50%;
             border: 1.5px solid rgba(245, 158, 11, 0.8); background-color: rgba(245, 158, 11, 0.05);
-            pointer-events: none; z-index: 9999; transform: translate(-50%, -50%);
-            transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1), height 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s, border-color 0.15s, left 0.1s, top 0.1s;
+            pointer-events: none; z-index: 9999; transform: translate3d(-50%, -50%, 0);
+            transition: width 0.12s cubic-bezier(0.4, 0, 0.2, 1), height 0.12s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.12s, border-color 0.12s;
             box-shadow: 0 0 15px rgba(245, 158, 11, 0.4), inset 0 0 10px rgba(245, 158, 11, 0.2);
             backdrop-filter: blur(2px);
+            will-change: left, top, width, height;
         }
-        #custom-cursor.fist { 
+        #custom-cursor.pinch { 
             width: 18px; height: 18px; 
             background-color: rgba(220, 38, 38, 0.9); border-color: #ef4444; 
             box-shadow: 0 0 30px rgba(239, 68, 68, 0.8); 
             backdrop-filter: none;
+        }
+        .gesture-pending-pinch {
+            border-color: rgba(251, 191, 36, 0.95) !important;
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.35), 0 0 28px rgba(251, 191, 36, 0.35) !important;
         }
         @media (max-width: 768px) { #custom-cursor { display: none !important; } }
 
@@ -156,10 +211,10 @@
                 <div class="p-2 md:p-3 bg-amber-900/30 rounded-full border border-amber-500/40 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.3)]">
                     <i class="fa-solid fa-hand-sparkles text-sm md:text-xl animate-pulse"></i>
                 </div>
-                <span class="text-[10px] md:text-[13px] font-bold tracking-widest drop-shadow-md">请举起手掌控制光标，对准下方按钮【握拳】进入</span>
+                <span class="text-[10px] md:text-[13px] font-bold tracking-widest drop-shadow-md">点击下方按钮进入；现场装置可开启手势后【拇指食指捏合】操作</span>
             </div>
 
-            <button id="enter-exhibition-btn" class="animate-reveal relative group cursor-pointer interactive-element overflow-hidden rounded-full scale-90 md:scale-100" style="animation-delay: 1.6s;">
+            <button id="enter-exhibition-btn" class="animate-reveal relative group cursor-pointer interactive-element overflow-hidden rounded-full scale-90 md:scale-100" style="animation-delay: 1.6s;" aria-label="开启展览">
                 <div class="absolute -inset-1 bg-gradient-to-r from-amber-500 to-red-600 rounded-full blur opacity-50 group-hover:opacity-100 transition duration-500"></div>
                 <div class="relative px-8 py-4 md:px-12 md:py-5 bg-stone-950/90 ring-1 ring-amber-500/60 rounded-full leading-none flex items-center gap-3 md:gap-4 backdrop-blur-md sweep-light">
                     <span class="text-amber-300 font-bold tracking-[0.3em] text-sm md:text-lg">开启时空之门</span>
@@ -173,7 +228,10 @@
     </div>
 
     <!-- 提示通知容器 -->
-    <div id="toast-container" class="fixed top-16 md:top-24 left-1/2 transform -translate-x-1/2 z-[10000] flex flex-col gap-3 pointer-events-none w-[90%] md:w-auto items-center"></div>
+    <div id="toast-container" class="fixed top-16 md:top-24 left-1/2 transform -translate-x-1/2 z-[10000] flex flex-col gap-3 pointer-events-none w-[90%] md:w-auto items-center" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div id="environment-warning" class="hidden fixed top-3 left-1/2 -translate-x-1/2 z-[10001] w-[92%] max-w-3xl rounded-xl border border-red-500/60 bg-red-950/95 px-4 py-3 text-center text-[12px] md:text-sm text-red-100 shadow-2xl backdrop-blur-xl">
+        当前通过 file:// 打开，摄像头与 AR 可能被浏览器拦截。请使用 <a id="localhost-preview-link" class="font-bold text-amber-200 underline" href="http://127.0.0.1:8000/optimized-exhibition.html">localhost 预览地址</a> 访问。
+    </div>
 
     <!-- 虚拟手势光标 -->
     <div id="custom-cursor" class="hidden"></div>
@@ -191,19 +249,19 @@
         </div>
         
         <div class="flex items-center space-x-2 md:space-x-4 w-full sm:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0">
-            <button id="open-gallery-btn" class="admin-control hidden shrink-0 interactive-element bg-pink-950/50 hover:bg-pink-900 text-pink-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-pink-500/30 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2">
+            <button id="open-gallery-btn" class="admin-control hidden shrink-0 interactive-element bg-pink-950/50 hover:bg-pink-900 text-pink-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-pink-500/30 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2" aria-label="打开游客图库">
                 <i class="fa-solid fa-camera-retro"></i><span class="hidden md:inline">游客图库</span>
             </button>
-            <button id="open-config-btn" class="admin-control hidden shrink-0 interactive-element bg-purple-950/50 hover:bg-purple-900 text-purple-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-purple-500/30 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2">
+            <button id="open-config-btn" class="admin-control hidden shrink-0 interactive-element bg-purple-950/50 hover:bg-purple-900 text-purple-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-purple-500/30 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2" aria-label="打开展厅配置">
                 <i class="fa-solid fa-gears animate-spin-slow"></i><span class="hidden md:inline">展厅配置</span>
             </button>
-            <button id="toggle-admin-btn" class="shrink-0 interactive-element bg-stone-900/50 hover:bg-stone-800 text-stone-400 hover:text-amber-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-stone-800 hover:border-amber-700/50 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2">
+            <button id="toggle-admin-btn" class="shrink-0 interactive-element bg-stone-900/50 hover:bg-stone-800 text-stone-400 hover:text-amber-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-stone-800 hover:border-amber-700/50 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2" aria-label="切换馆长模式">
                 <i class="fa-solid fa-lock text-[10px]" id="admin-icon"></i><span id="admin-text">游客浏览</span>
             </button>
-            <button id="replay-landing-btn" class="shrink-0 interactive-element bg-indigo-950/50 hover:bg-indigo-900 text-indigo-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-indigo-500/30 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2 group">
+            <button id="replay-landing-btn" class="shrink-0 interactive-element bg-indigo-950/50 hover:bg-indigo-900 text-indigo-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-indigo-500/30 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2 group" aria-label="重演主页">
                 <i class="fa-solid fa-rotate-left transition-transform duration-500 group-hover:-rotate-180"></i><span class="hidden md:inline">重演主页</span>
             </button>
-            <button id="toggle-bgm-btn" class="shrink-0 interactive-element bg-stone-900/50 hover:bg-stone-800 text-amber-400 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-amber-900/50 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2">
+            <button id="toggle-bgm-btn" class="shrink-0 interactive-element bg-stone-900/50 hover:bg-stone-800 text-amber-400 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-amber-900/50 text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2" aria-label="开启或关闭背景音乐">
                 <i class="fa-solid fa-music text-amber-500 animate-pulse text-[10px]"></i><span id="bgm-text" class="hidden md:inline">开启神秘乐声</span>
             </button>
 
@@ -213,7 +271,7 @@
                 <span class="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-red-500 animate-pulse" id="status-dot"></span>
                 <span class="text-[9px] md:text-[10px] text-stone-400 font-bold tracking-wider" id="status-text">视觉离线</span>
             </div>
-            <button id="toggle-camera-btn" class="shrink-0 bg-amber-600 hover:bg-amber-500 text-black px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2 shadow-[0_0_15px_rgba(217,119,6,0.3)]">
+            <button id="toggle-camera-btn" class="shrink-0 bg-amber-600 hover:bg-amber-500 text-black px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-[10px] md:text-xs font-bold transition flex items-center space-x-1 md:space-x-2 shadow-[0_0_15px_rgba(217,119,6,0.3)]" aria-label="开启手势摄像头">
                 <i class="fa-solid fa-video"></i><span class="hidden md:inline">开启手势</span>
             </button>
         </div>
@@ -227,7 +285,7 @@
             <div class="text-center mb-6 md:mb-10 relative shrink-0">
                 <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-amber-50 tracking-[0.2em] mb-2 md:mb-4 accent-text" style="text-shadow: 0 5px 20px rgba(245, 158, 11, 0.3);">选 择 展 馆 分 区</h2>
                 <p class="text-stone-400 text-[10px] md:text-[13px] tracking-[0.1em] md:tracking-[0.2em] flex items-center justify-center gap-1.5 md:gap-2">
-                    <i class="fa-solid fa-hand-pointer text-amber-500/70"></i> 凌空操控光标：【握拳】进入展区 · 【上下拖拽】翻页
+                    <i class="fa-solid fa-hand-pointer text-amber-500/70"></i> 凌空操控光标：【捏合】进入展区 · 【捏合拖拽】翻页
                 </p>
                 <div class="absolute left-1/2 -translate-x-1/2 bottom-[-10px] md:bottom-[-20px] w-32 md:w-48 h-[2px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
             </div>
@@ -293,7 +351,7 @@
                 
                 <div class="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-2 md:px-8 md:py-3 rounded-full border border-amber-500/30 text-[9px] md:text-[11px] text-amber-200 flex items-center gap-2 md:gap-3 z-20 shadow-2xl w-max max-w-[90%]">
                     <i class="fa-solid fa-arrows-up-down-left-right animate-pulse text-amber-500"></i>
-                    <span id="interaction-hint" class="tracking-widest font-bold whitespace-nowrap overflow-hidden text-ellipsis">隔空握拳并拖拽，全方位鉴赏文物细节</span>
+                    <span id="interaction-hint" class="tracking-widest font-bold whitespace-nowrap overflow-hidden text-ellipsis">隔空捏合并拖拽，全方位鉴赏文物细节</span>
                 </div>
                 
                 <div id="three-container" class="absolute inset-0 z-10 w-full h-full hidden pointer-events-none"></div>
@@ -387,7 +445,7 @@
                                 </div>
                                 <div class="text-left">
                                     <div class="text-emerald-50 font-bold tracking-[0.1em] md:tracking-[0.2em] text-[12px] md:text-[15px] drop-shadow-md mb-0.5 md:mb-1">开启全息 AR 投射</div>
-                                    <div class="text-[8px] md:text-[10px] text-emerald-400/80 tracking-widest font-mono hidden sm:block">退后正对镜头 · 握拳激活映射</div>
+                                    <div class="text-[8px] md:text-[10px] text-emerald-400/80 tracking-widest font-mono hidden sm:block">退后正对镜头 · 捏合触发留影</div>
                                     <div class="text-[8px] text-emerald-400/80 tracking-widest font-mono sm:hidden">正对镜头试戴</div>
                                 </div>
                             </div>
@@ -406,7 +464,7 @@
     <footer class="relative z-10 w-full px-4 md:px-8 py-2 md:py-3 text-center text-[8px] md:text-[10px] text-stone-600 border-t border-amber-900/20 bg-black/40 flex flex-col md:flex-row justify-between items-center gap-1 md:gap-2 font-mono tracking-widest fade-transition fade-out hidden" id="main-footer">
         <span id="footer-copyright-text">© 2026 贺州文化博物馆 - AI 交互特展智能系统 v2.0</span>
         <div class="flex gap-2 md:gap-4 items-center">
-            <span class="flex items-center gap-1.5 md:gap-2"><i class="fa-solid fa-sliders text-amber-700"></i> 感应阈值: <input type="range" id="sensitivity-slider" min="10" max="90" value="45" class="accent-amber-600 bg-stone-800 h-1 w-16 md:w-20 rounded-full outline-none"></span>
+            <span class="flex items-center gap-1.5 md:gap-2"><i class="fa-solid fa-sliders text-amber-700"></i> 手势灵敏度: <input type="range" id="sensitivity-slider" min="10" max="90" value="64" class="accent-amber-600 bg-stone-800 h-1 w-16 md:w-20 rounded-full outline-none"></span>
         </div>
     </footer>
 
@@ -438,7 +496,7 @@
             </div>
             <div class="flex flex-col pointer-events-none">
                 <span class="font-bold tracking-[0.2em] md:tracking-[0.3em] text-emerald-300 text-[11px] md:text-sm mb-0.5 md:mb-1">快门留影</span>
-                <span class="text-[8px] md:text-[10px] text-stone-400 tracking-wider">直接<span class="text-amber-500 font-bold mx-1">轻触屏幕</span>(或凌空握拳)拍照</span>
+                <span class="text-[8px] md:text-[10px] text-stone-400 tracking-wider">直接<span class="text-amber-500 font-bold mx-1">轻触屏幕</span>(或凌空捏合)拍照</span>
             </div>
         </div>
 
@@ -456,7 +514,7 @@
         <div class="relative w-full max-w-sm md:max-w-md my-auto bg-stone-900 border border-amber-900/50 rounded-2xl shadow-[0_0_50px_rgba(245,158,11,0.2)] overflow-hidden flex flex-col">
             
             <div class="absolute top-3 right-3 md:top-4 md:right-4 z-20">
-                <button id="close-postcard-btn" class="interactive-element w-7 h-7 md:w-8 md:h-8 rounded-full bg-black/60 text-stone-400 hover:text-amber-400 border border-stone-700 flex items-center justify-center transition">
+                <button id="close-postcard-btn" class="interactive-element w-7 h-7 md:w-8 md:h-8 rounded-full bg-black/60 text-stone-400 hover:text-amber-400 border border-stone-700 flex items-center justify-center transition" aria-label="关闭明信片弹窗">
                     <i class="fa-solid fa-xmark text-sm md:text-base"></i>
                 </button>
             </div>
@@ -467,7 +525,7 @@
                 <div class="relative w-full h-40 md:h-56 flex flex-col items-center justify-center overflow-hidden">
                     <div class="absolute inset-0 bg-gradient-to-b from-amber-900/40 via-stone-900 to-[#0b0c10]"></div>
                     <div class="absolute w-40 h-40 md:w-64 md:h-64 bg-amber-600/20 rounded-full blur-3xl"></div>
-                    <img id="postcard-mask-img" src="" class="relative z-10 w-2/3 md:w-3/4 h-[85%] md:h-4/5 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]">
+                    <img id="postcard-mask-img" src="" alt="明信片文物图像" loading="lazy" decoding="async" class="relative z-10 w-2/3 md:w-3/4 h-[85%] md:h-4/5 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]">
                 </div>
                 
                 <!-- 2. 中部：藏品信息与 AI 解说 -->
@@ -483,7 +541,7 @@
                 <div class="px-4 md:px-6 w-full flex flex-col items-center">
                     <div class="relative w-full rounded-xl overflow-hidden border border-stone-700 shadow-[0_10px_30px_rgba(0,0,0,0.6)] bg-black">
                         <!-- 留影照片 -->
-                        <img id="postcard-photo" src="" class="w-full aspect-[4/3] object-cover">
+                        <img id="postcard-photo" src="" alt="游客 AR 留影" loading="lazy" decoding="async" class="w-full aspect-[4/3] object-cover">
                         <!-- 渐变蒙版，用于衬托底部文字 -->
                         <div class="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/80 to-transparent pointer-events-none"></div>
                         <!-- 博物馆水印 -->
@@ -512,7 +570,7 @@
         <div class="bg-stone-900 border-2 border-purple-500/50 p-4 md:p-6 rounded-2xl max-w-5xl w-[95%] md:w-full shadow-[0_0_40px_rgba(168,85,247,0.15)] flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-center border-b border-purple-900/50 pb-3 md:pb-4 mb-3 md:mb-4 flex-shrink-0">
                 <h3 class="text-base md:text-xl font-bold text-purple-400 flex items-center gap-2 md:gap-3"><i class="fa-solid fa-sliders"></i>馆长中控台：内容与配置管理</h3>
-                <button id="close-config-btn" class="interactive-element text-stone-400 hover:text-white"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
+                <button id="close-config-btn" class="interactive-element text-stone-400 hover:text-white" aria-label="关闭配置面板"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
             </div>
             
             <div class="flex flex-col md:flex-row gap-4 md:gap-6 overflow-y-auto custom-scroll pr-1 md:pr-2 flex-grow">
@@ -609,7 +667,7 @@
                 <div class="flex items-center gap-2 md:gap-4">
                     <span class="text-stone-400 text-[10px] md:text-sm hidden sm:inline">已存留影：<span id="gallery-photo-count" class="text-pink-400 font-bold font-mono text-base md:text-lg">0</span></span>
                     <button id="clear-gallery-btn" class="interactive-element text-[10px] md:text-xs bg-red-950 text-red-400 px-2 md:px-3 py-1 md:py-1.5 rounded border border-red-800 transition hover:bg-red-900"><i class="fa-solid fa-trash-can"></i> 清空</button>
-                    <button id="close-gallery-btn" class="interactive-element text-stone-400 hover:text-white ml-1 md:ml-2"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
+                    <button id="close-gallery-btn" class="interactive-element text-stone-400 hover:text-white ml-1 md:ml-2" aria-label="关闭游客图库"><i class="fa-solid fa-xmark text-xl md:text-2xl"></i></button>
                 </div>
             </div>
             
@@ -648,7 +706,7 @@
         <div class="bg-stone-900 border-2 border-amber-500/50 p-4 md:p-6 rounded-2xl max-w-2xl w-[95%] md:w-full shadow-2xl space-y-3 md:space-y-4 text-left">
             <div class="flex justify-between items-center border-b border-amber-900/40 pb-2 md:pb-3">
                 <h3 class="text-base md:text-xl font-bold text-amber-400 flex items-center gap-2"><i class="fa-solid fa-images"></i><span>馆藏珍宝 - 隔离式图像智配引擎</span></h3>
-                <button id="close-importer-btn" class="interactive-element text-stone-400 hover:text-white"><i class="fa-solid fa-xmark text-lg md:text-xl"></i></button>
+                <button id="close-importer-btn" class="interactive-element text-stone-400 hover:text-white" aria-label="关闭导入面板"><i class="fa-solid fa-xmark text-lg md:text-xl"></i></button>
             </div>
             
             <p class="text-[10px] md:text-xs text-amber-200/80 leading-relaxed bg-amber-950/30 p-2.5 md:p-3 rounded-lg border border-amber-900/20">
@@ -750,8 +808,9 @@
     <div id="auth-modal" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 md:p-4">
         <div class="bg-stone-900 border-2 border-emerald-500/50 p-5 md:p-6 rounded-2xl w-[260px] md:w-[300px] text-center shadow-2xl">
             <i class="fa-solid fa-shield-halved text-3xl md:text-4xl text-emerald-400 mb-2"></i>
-            <h3 class="text-lg md:text-xl font-bold text-amber-100 mb-2">馆长认证 (admin)</h3>
-            <input type="password" id="admin-pwd-input" class="w-full bg-stone-950 border border-emerald-900/50 rounded p-1.5 md:p-2 text-center text-emerald-400 mb-3 tracking-widest outline-none text-sm md:text-base">
+            <h3 class="text-lg md:text-xl font-bold text-amber-100 mb-2">馆长认证</h3>
+            <label for="admin-pwd-input" class="sr-only">馆长授权码</label>
+            <input type="password" id="admin-pwd-input" autocomplete="current-password" placeholder="请输入授权码" class="w-full bg-stone-950 border border-emerald-900/50 rounded p-1.5 md:p-2 text-center text-emerald-400 mb-3 tracking-widest outline-none text-sm md:text-base">
             <div class="flex justify-center gap-2">
                 <button id="cancel-auth-btn" class="px-3 py-1 md:px-4 md:py-1.5 bg-stone-800 text-stone-300 rounded transition hover:bg-stone-700 text-xs md:text-sm">取消</button>
                 <button id="confirm-auth-btn" class="px-3 py-1 md:px-4 md:py-1.5 bg-emerald-500 text-black font-bold rounded shadow-md hover:bg-emerald-600 transition text-xs md:text-sm">验证</button>
@@ -760,7 +819,7 @@
     </div>
 
     <!-- 悬浮窗：摄像头与手势监视器 -->
-    <div id="webcam-container" class="fixed bottom-20 right-4 sm:bottom-12 sm:right-4 z-40 w-28 h-20 sm:w-44 sm:h-32 bg-black rounded-lg overflow-hidden flex flex-col items-center justify-center">
+    <div id="webcam-container" class="hidden fixed bottom-20 right-4 sm:bottom-12 sm:right-4 z-40 w-28 h-20 sm:w-44 sm:h-32 bg-black rounded-lg overflow-hidden flex flex-col items-center justify-center">
         <video id="webcam" class="w-full h-full object-cover transform scale-x-[-1]" autoplay playsinline muted></video>
         <canvas id="webcam-overlay" class="absolute inset-0 w-full h-full transform scale-x-[-1] pointer-events-none"></canvas>
         <div id="cam-active-badge" class="absolute bottom-1 left-1 md:left-2 bg-black/70 px-1 py-0.5 md:px-1.5 md:py-0.5 rounded text-[8px] md:text-[9px] text-amber-400 flex items-center gap-1">
@@ -779,7 +838,10 @@
             let arStartTime = 0; // 🌟 Ghost Click 防护锁时间戳
 
             // --- 核心全局变量声明 ---
-            const apiKey = ""; // 🌟 Gemini API Key, 由运行环境自动注入
+            const apiKey = window.GEMINI_API_KEY || ""; // 生产环境建议使用后端代理，不要把密钥写入前端源码
+            const geminiProxyUrl = window.GEMINI_PROXY_URL || "";
+            const geminiModel = window.GEMINI_MODEL || "gemini-2.5-flash";
+            const adminCode = window.MUSEUM_ADMIN_CODE || "HZ-MUSEUM-2026"; // 本地演示授权码；正式上线请改为后端鉴权
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'museum-gesture-mask';
             
             // 已清空默认的莫须有展馆和分类，留给馆长后期在后台自由配置
@@ -788,12 +850,95 @@
             
             const fallbackSVG = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="260"><rect width="200" height="260" fill="#111" stroke="#333" stroke-width="2"/><text x="100" y="130" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle" alignment-baseline="middle">馆藏暂无影像</text></svg>');
 
+            function escapeHTML(value) {
+                return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[char]));
+            }
+
+            function textToLineBreakHTML(value) {
+                return escapeHTML(value).replace(/\n/g, '<br>');
+            }
+
+            function safeImageUrl(url) {
+                const value = String(url || '').trim();
+                if (!value) return fallbackSVG;
+                if (/^(data:image\/|blob:|https?:\/\/|\.\/|\/|images\/)/i.test(value)) {
+                    return value.replace(/"/g, '%22');
+                }
+                return fallbackSVG;
+            }
+
+            function getGeminiEndpoint() {
+                if (geminiProxyUrl) return geminiProxyUrl;
+                if (!apiKey) return "";
+                return `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+            }
+
+            function getLocalhostPreviewUrl() {
+                return `http://127.0.0.1:8000/${location.pathname.split('/').pop() || 'optimized-exhibition.html'}`;
+            }
+
+            function showEnvironmentWarningIfNeeded() {
+                const warning = document.getElementById('environment-warning');
+                const link = document.getElementById('localhost-preview-link');
+                if (link) link.href = getLocalhostPreviewUrl();
+                if (location.protocol === 'file:') warning.classList.remove('hidden');
+            }
+
+            function createDemoMaskImage() {
+                const svg = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 420">
+                        <defs>
+                            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feDropShadow dx="0" dy="16" stdDeviation="12" flood-color="#000" flood-opacity=".55"/>
+                            </filter>
+                            <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1">
+                                <stop offset="0" stop-color="#fef3c7"/>
+                                <stop offset=".45" stop-color="#d97706"/>
+                                <stop offset="1" stop-color="#7f1d1d"/>
+                            </linearGradient>
+                        </defs>
+                        <g filter="url(#shadow)">
+                            <path d="M160 28c73 0 118 58 118 149 0 101-57 196-118 214C99 373 42 278 42 177 42 86 87 28 160 28Z" fill="url(#gold)" stroke="#451a03" stroke-width="10"/>
+                            <path d="M88 156c28-25 60-25 87 0-25 11-56 11-87 0Zm57 84c15 10 30 10 45 0-7 28-38 28-45 0Zm0-93c12-45 18-69 15-100 27 31 35 65 25 103-12-9-25-10-40-3Z" fill="#111827" opacity=".92"/>
+                            <path d="M232 156c-28-25-60-25-87 0 25 11 56 11 87 0Z" fill="#111827" opacity=".92"/>
+                            <path d="M72 121c52 15 91 15 176 0M84 283c43 24 109 24 152 0" fill="none" stroke="#fef3c7" stroke-width="10" stroke-linecap="round" opacity=".75"/>
+                            <path d="M78 205c42 19 72 18 98-3m-32 72c19 18 40 18 59 0m41-72c-28 21-59 22-98 3" fill="none" stroke="#7f1d1d" stroke-width="13" stroke-linecap="round"/>
+                            <circle cx="112" cy="178" r="18" fill="#020617"/>
+                            <circle cx="208" cy="178" r="18" fill="#020617"/>
+                        </g>
+                    </svg>`;
+                return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+            }
+
             let masksData = [];
             let activeMaskIndex = null; 
             let currentSubCategoryFilter = 'all'; 
 
             let cameraActive = false;
-            let isFistAction = false; 
+            let cameraConsentGranted = false;
+            let cameraController = null;
+            let handDetector = null;
+            let isPinchAction = false; 
+            let pinchCandidateFrames = 0;
+            let pinchReleaseFrames = 0;
+            let pinchInvalidFrames = 0;
+            let lastPinchEndAt = 0;
+            const PINCH_CONFIG = {
+                strongStartRatio: 0.24,
+                startRatio: 0.31,
+                releaseRatio: 0.44,
+                confirmFrames: 1,
+                releaseFrames: 2,
+                invalidGraceFrames: 1,
+                cooldownMs: 70,
+                minHandScale: 0.12
+            };
             
             let isAdminMode = false; 
             let isBatchSelectMode = false; 
@@ -807,6 +952,12 @@
             let tempImportMap = {}; 
             let currentHoveredElement = null; 
             let possibleClickElement = null; 
+            let gestureLockedTarget = null;
+            let gestureStartedAsClick = false;
+            let lastMaskGestureTapIndex = null;
+            let lastMaskGestureTapAt = 0;
+            const MASK_DOUBLE_TAP_MS = 900;
+            const GESTURE_TAP_TOLERANCE = 48;
             let handPrevX = null; let handPrevY = null; 
             let lastWristRaw = null; 
             let targetRotationX = 0; let targetRotationY = 0;
@@ -877,7 +1028,7 @@
                     if(typeof arRenderer !== 'undefined' && arRenderer) arRenderer.clear();
                     if(typeof arCtx !== 'undefined' && arCtx) arCtx.clearRect(0, 0, arCanvas.width, arCanvas.height);
 
-                    document.getElementById('webcam-container').classList.remove('hidden');
+                    if (cameraActive) document.getElementById('webcam-container').classList.remove('hidden');
                     document.getElementById('ar-bg-video').pause();
                 }
 
@@ -980,10 +1131,18 @@
                 }
             }
 
+            async function callGemini(payload) {
+                const endpoint = getGeminiEndpoint();
+                if (!endpoint) {
+                    throw new Error("Gemini endpoint is not configured. Set window.GEMINI_PROXY_URL or window.GEMINI_API_KEY.");
+                }
+                return fetchGeminiWithRetry(endpoint, payload);
+            }
+
             // 🌟 核心新增：图片转 Base64 辅助函数（为 AI 注入视觉识别能力）
             async function getBase64Image(url) {
                 try {
-                    const res = await fetch(url);
+                    const res = await fetch(safeImageUrl(url));
                     const blob = await res.blob();
                     return new Promise((resolve, reject) => {
                         const reader = new FileReader();
@@ -998,9 +1157,26 @@
             }
 
             function typeWriterEffect(element, text, speed = 40) {
-                element.innerHTML = '<span class="typing-cursor"></span>';
+                element.textContent = '';
                 let i = 0;
-                function type() { if (i < text.length) { element.innerHTML = text.substring(0, i + 1) + '<span class="typing-cursor"></span>'; i++; setTimeout(type, speed); } else element.innerHTML = text; }
+                const safeText = String(text ?? '');
+                function renderTyping(content, done = false) {
+                    element.textContent = content;
+                    if (!done) {
+                        const cursor = document.createElement('span');
+                        cursor.className = 'typing-cursor';
+                        element.appendChild(cursor);
+                    }
+                }
+                function type() {
+                    if (i < safeText.length) {
+                        renderTyping(safeText.substring(0, i + 1));
+                        i++;
+                        setTimeout(type, speed);
+                    } else {
+                        renderTyping(safeText, true);
+                    }
+                }
                 type();
             }
 
@@ -1033,8 +1209,7 @@
                         contents: [{ parts: parts }],
                         systemInstruction: { parts: [{ text: "你是一位专业的博物馆AI馆长和艺术鉴赏家，请结合图片真实的视觉特征进行深入浅出、用词优美的讲解。" }] }
                     };
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-                    const result = await fetchGeminiWithRetry(url, payload);
+                    const result = await callGemini(payload);
                     const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
                     
                     if (text) {
@@ -1116,8 +1291,7 @@
                         contents: [{ parts: parts }], 
                         systemInstruction: { parts: [{ text: "你是一位热情友好的博物馆AI馆长，善于观察文物外观特征来生动地解答游客疑惑。" }] } 
                     };
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-                    const result = await fetchGeminiWithRetry(url, payload);
+                    const result = await callGemini(payload);
                     const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
                     if (text) { typeWriterEffect(replyBox, text.replace(/[\*#]/g, ''), 20); } 
                     else { replyBox.innerHTML = '抱歉，馆长查阅资料时遇到了点小问题。'; }
@@ -1301,7 +1475,12 @@
             function showToast(message, type = 'info') {
                 const container = document.getElementById('toast-container'); const toast = document.createElement('div');
                 toast.className = `px-4 py-3 md:px-6 md:py-4 rounded-xl border shadow-[0_10px_30px_rgba(0,0,0,0.8)] transition duration-500 transform translate-y-4 opacity-0 flex items-center gap-2 md:gap-3 backdrop-blur-xl bg-stone-950/90 text-[11px] md:text-[13px] font-bold tracking-widest ${type === 'error' ? 'border-red-500/50 text-red-300' : type === 'success' ? 'border-emerald-500/50 text-emerald-300' : 'border-amber-500/50 text-amber-300' }`;
-                toast.innerHTML = `<i class="${type === 'error' ? 'fa-solid fa-circle-exclamation text-base md:text-lg' : type === 'success' ? 'fa-solid fa-circle-check text-base md:text-lg' : 'fa-solid fa-wand-magic-sparkles text-base md:text-lg'}"></i><span>${message}</span>`;
+                const icon = document.createElement('i');
+                icon.className = type === 'error' ? 'fa-solid fa-circle-exclamation text-base md:text-lg' : type === 'success' ? 'fa-solid fa-circle-check text-base md:text-lg' : 'fa-solid fa-wand-magic-sparkles text-base md:text-lg';
+                icon.setAttribute('aria-hidden', 'true');
+                const text = document.createElement('span');
+                text.textContent = message;
+                toast.append(icon, text);
                 container.appendChild(toast); setTimeout(() => toast.classList.remove('translate-y-4', 'opacity-0'), 50);
                 setTimeout(() => { toast.classList.add('translate-y-4', 'opacity-0'); setTimeout(() => toast.remove(), 500); }, 3500);
             }
@@ -1342,6 +1521,7 @@
 
             // --- 粒子系统 ---
             const particleCanvas = document.getElementById('particle-canvas'), partCtx = particleCanvas.getContext('2d');
+            const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             let particles = [];
             
             function resizeCanvas() {
@@ -1379,13 +1559,19 @@
                     partCtx.beginPath(); partCtx.arc(this.x, this.y, this.size * 2.5, 0, Math.PI * 2); partCtx.fill(); 
                 }
             }
-            function initParticles() { particles = []; for (let i = 0; i < 80; i++) particles.push(new Particle()); }
+            function initParticles() {
+                particles = [];
+                if (reduceMotion) return;
+                const particleCount = window.innerWidth < 768 ? 35 : 80;
+                for (let i = 0; i < particleCount; i++) particles.push(new Particle());
+            }
             
             function animateRender() {
                 requestAnimationFrame(animateRender);
+                if (document.hidden) return;
 
                 // 🌟 进阶优化：Render Throttling 渲染管线节流
-                if (!isARMode) {
+                if (!isARMode && !reduceMotion) {
                     partCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height); 
                     particles.forEach(p => { p.update(); p.draw(); });
                 }
@@ -1487,7 +1673,7 @@
                         if (jsonData.siteConfig.tag) document.getElementById('display-tag').innerText = jsonData.siteConfig.tag;
                         if (jsonData.siteConfig.mainTitle) document.getElementById('landing-main-title').innerText = jsonData.siteConfig.mainTitle;
                         if (jsonData.siteConfig.subTitle) document.getElementById('landing-sub-title').innerText = jsonData.siteConfig.subTitle;
-                        if (jsonData.siteConfig.description) document.getElementById('landing-desc').innerHTML = jsonData.siteConfig.description.replace(/\n/g, '<br>');
+                        if (jsonData.siteConfig.description) document.getElementById('landing-desc').innerHTML = textToLineBreakHTML(jsonData.siteConfig.description);
                         if (jsonData.siteConfig.footerText) {
                             document.getElementById('footer-copyright-text').innerText = jsonData.siteConfig.footerText;
                             document.getElementById('landing-watermark').innerText = jsonData.siteConfig.footerText;
@@ -1506,7 +1692,25 @@
 
                 } catch (e) {
                     console.warn("未能加载外部 data.json (可能文件不存在或跨域拦截)，当前为初始空馆状态", e);
-                    // 已移除自动生成90个假数据的逻辑，保持0展品状态
+                    masksData = [{
+                        id: 'demo-mask',
+                        serial: 'DEMO-NUO-001',
+                        name: '演示傩戏面具',
+                        materialType: '演示展馆',
+                        subCategory: 'AR 试戴',
+                        color: '#e5c583',
+                        image: createDemoMaskImage(),
+                        objUrl: null,
+                        mtlUrl: null,
+                        textureUrl: null,
+                        era: '本地演示',
+                        location: '贺州文化博物馆数字展厅',
+                        spec: '透明 SVG 贴脸测试素材',
+                        description: '用于本地测试 AR 幻戴流程的透明面具素材。正式布展时，请用 data.json 和 images 目录替换为真实馆藏图片。'
+                    }];
+                    window.appCategories = ['演示展馆'];
+                    window.appSubCategories = ['AR 试戴'];
+                    showToast("未找到 data.json，已加载一件演示面具用于测试 AR。", "info");
                 }
             }
 
@@ -1544,12 +1748,13 @@
 
                 const allCard = document.createElement('div');
                 allCard.className = "interactive-element animate-fade-in-up animate-float group relative h-[200px] md:h-[320px] rounded-2xl md:rounded-3xl overflow-hidden border border-amber-500/40 cursor-pointer transform transition-all duration-500 hover:scale-105 hover:shadow-[0_30px_60px_rgba(245,158,11,0.25)] md:col-span-2 lg:col-span-2"; 
+                allCard.dataset.gestureTarget = 'category-card';
                 allCard.style.animationDelay = `${cardIndex * 0.1}s, 0s`; 
                 
-                const allCoverImg = masksData.length > 0 ? masksData[0].image : '';
+                const allCoverImg = safeImageUrl(masksData.length > 0 ? masksData[0].image : '');
                 allCard.innerHTML = `
                     <div class="absolute inset-0 bg-stone-900 overflow-hidden flex items-center justify-center">
-                        <img src="${allCoverImg}" class="w-full h-[150%] object-cover opacity-50 group-hover:opacity-70 transition duration-700 group-hover:scale-110 filter blur-[2px] group-hover:blur-0" onerror="this.src='${fallbackSVG}'">
+                        <img src="${allCoverImg}" alt="博物馆全景封面" loading="lazy" decoding="async" class="w-full h-[150%] object-cover opacity-50 group-hover:opacity-70 transition duration-700 group-hover:scale-110 filter blur-[2px] group-hover:blur-0" onerror="this.src='${fallbackSVG}'">
                         <div class="absolute inset-0 bg-gradient-to-t from-[#0b0c10] via-black/50 to-transparent"></div>
                     </div>
                     <div class="absolute inset-0 p-5 md:p-8 flex flex-col justify-end z-10">
@@ -1576,19 +1781,21 @@
 
                 allCats.forEach((cat) => {
                     const categoryMasks = masksData.filter(m => m.materialType === cat);
-                    const coverImg = categoryMasks.length > 0 ? categoryMasks[0].image : '';
+                    const coverImg = safeImageUrl(categoryMasks.length > 0 ? categoryMasks[0].image : '');
+                    const safeCat = escapeHTML(cat);
                     const card = document.createElement('div');
                     card.className = "interactive-element animate-fade-in-up animate-float group relative h-[180px] md:h-[320px] rounded-2xl md:rounded-3xl overflow-hidden border border-stone-800 cursor-pointer transform transition-all duration-500 hover:scale-105 hover:border-amber-600/50 hover:shadow-[0_20px_50px_rgba(245,158,11,0.15)]";
+                    card.dataset.gestureTarget = 'category-card';
                     card.style.animationDelay = `${cardIndex * 0.1}s, ${(cardIndex%3)*0.5}s`; 
                     
                     card.innerHTML = `
                         <div class="absolute inset-0 bg-stone-900 overflow-hidden flex items-center justify-center">
-                            <img src="${coverImg}" class="w-full h-[150%] object-cover opacity-30 group-hover:opacity-60 transition duration-700 group-hover:scale-110 filter blur-[1px] group-hover:blur-0" onerror="this.src='${fallbackSVG}'">
+                            <img src="${coverImg}" alt="${safeCat}展馆封面" loading="lazy" decoding="async" class="w-full h-[150%] object-cover opacity-30 group-hover:opacity-60 transition duration-700 group-hover:scale-110 filter blur-[1px] group-hover:blur-0" onerror="this.src='${fallbackSVG}'">
                             <div class="absolute inset-0 bg-gradient-to-t from-[#0b0c10] via-black/80 to-transparent"></div>
                         </div>
                         <div class="absolute inset-0 p-4 md:p-6 flex flex-col justify-end z-10">
                             <div class="text-stone-400 group-hover:text-amber-400 text-[8px] md:text-[10px] font-bold tracking-[0.2em] md:tracking-[0.3em] mb-1.5 md:mb-2 uppercase border border-stone-700 group-hover:border-amber-500/50 w-max px-2 py-0.5 md:px-2.5 md:py-1 rounded bg-black/50 backdrop-blur-sm transition-colors">专属展馆</div>
-                            <h3 class="text-xl md:text-2xl font-bold text-stone-200 tracking-widest mb-1 group-hover:text-amber-300 transition-colors drop-shadow-md">${cat}</h3>
+                            <h3 class="text-xl md:text-2xl font-bold text-stone-200 tracking-widest mb-1 group-hover:text-amber-300 transition-colors drop-shadow-md">${safeCat}</h3>
                             <p class="text-stone-500 group-hover:text-amber-100/60 text-[9px] md:text-xs tracking-wider font-mono transition-colors">馆藏 ${categoryMasks.length} 件珍宝</p>
                         </div>
                         <div class="absolute top-3 right-3 md:top-5 md:right-5 w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/60 border border-stone-700 flex items-center justify-center text-stone-500 group-hover:bg-amber-600 group-hover:border-amber-400 group-hover:text-black transition-all duration-300 shadow-inner z-10">
@@ -1644,16 +1851,21 @@
                     renderIndex++;
 
                     item.dataset.index = index;
+                    const safeMaskImage = safeImageUrl(mask.image);
+                    const safeMaskName = escapeHTML(mask.name);
+                    const safeMaterialType = escapeHTML(mask.materialType);
+                    const safeSubCategory = escapeHTML(mask.subCategory || '');
+                    const safeDisplayName = escapeHTML(String(mask.name || '').split('·').pop());
                     item.innerHTML = `
                         ${mask.objUrl ? `<div class="absolute top-2 left-2 md:top-4 md:left-4 text-[7px] md:text-[9px] font-bold tracking-widest ${mask.mtlUrl ? 'bg-purple-900/80 text-purple-300 border border-purple-700/50' : 'bg-emerald-900/80 text-emerald-300 border border-emerald-700/50'} px-1.5 py-0.5 md:px-2.5 md:py-1 rounded shadow-lg z-10 backdrop-blur-md">${mask.mtlUrl ? '3D+材质' : '3D'}</div>` : ''}
                         <div class="check-icon absolute top-2 right-2 md:top-4 md:right-4 text-blue-400 z-10 text-base md:text-xl drop-shadow-md transition-opacity duration-300 ${isSelected ? 'opacity-100' : 'opacity-0'}"><i class="fa-solid fa-circle-check"></i></div>
                         <div class="flex-1 w-full flex items-center justify-center pointer-events-none mt-2 mb-2 md:mt-4 md:mb-4 overflow-hidden relative">
                             <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 md:w-24 md:h-24 bg-amber-600/10 rounded-full blur-xl md:blur-2xl group-hover:bg-amber-500/20 transition-colors duration-500 z-0"></div>
-                            <img src="${mask.image}" alt="${mask.name}" class="relative z-10 w-full h-full max-h-[100px] md:max-h-[160px] object-contain filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] md:drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] transition-transform duration-700 ease-out group-hover:scale-110" onerror="this.src='${fallbackSVG}'">
+                            <img src="${safeMaskImage}" alt="${safeMaskName}" loading="lazy" decoding="async" class="relative z-10 w-full h-full max-h-[100px] md:max-h-[160px] object-contain filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] md:drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] transition-transform duration-700 ease-out group-hover:scale-110" onerror="this.src='${fallbackSVG}'">
                         </div>
                         <div class="w-full flex flex-col items-center z-10 pt-2 md:pt-4 mt-auto relative border-t border-stone-800 group-hover:border-amber-900/50 transition-colors">
-                            <span class="text-[7px] md:text-[9px] text-stone-500 group-hover:text-amber-600/80 mb-1 md:mb-1.5 tracking-[0.1em] md:tracking-[0.2em] uppercase font-bold truncate w-full text-center transition-colors">${mask.materialType} <span class="hidden sm:inline">${mask.subCategory ? `<span class="text-stone-700 group-hover:text-amber-900 mx-1">|</span> <span class="text-blue-400/80 group-hover:text-amber-500">${mask.subCategory}</span>` : ''}</span></span>
-                            <span class="text-[11px] md:text-[13px] text-stone-300 font-bold truncate w-full text-center tracking-widest group-hover:text-amber-100 transition-colors">${mask.name.split('·').pop()}</span>
+                            <span class="text-[7px] md:text-[9px] text-stone-500 group-hover:text-amber-600/80 mb-1 md:mb-1.5 tracking-[0.1em] md:tracking-[0.2em] uppercase font-bold truncate w-full text-center transition-colors">${safeMaterialType} <span class="hidden sm:inline">${safeSubCategory ? `<span class="text-stone-700 group-hover:text-amber-900 mx-1">|</span> <span class="text-blue-400/80 group-hover:text-amber-500">${safeSubCategory}</span>` : ''}</span></span>
+                            <span class="text-[11px] md:text-[13px] text-stone-300 font-bold truncate w-full text-center tracking-widest group-hover:text-amber-100 transition-colors">${safeDisplayName}</span>
                         </div>
                     `;
                     item.addEventListener('click', () => { if (isBatchSelectMode) toggleBatchSelection(index); else selectMask(index); });
@@ -1720,7 +1932,7 @@
                 } else {
                     document.getElementById('three-container').classList.add('hidden'); imgEl.classList.remove('hidden');
                     document.getElementById('interaction-hint').innerHTML = `<i class="fa-regular fa-image text-amber-500"></i> 当前为 2D 悬浮影像`;
-                    imgEl.src = mask.image; 
+                    imgEl.src = safeImageUrl(mask.image); 
                     imgEl.onerror = function() { this.src = fallbackSVG; };
                 }
                 targetRotationX = 0; targetRotationY = 0; currentRotationX = 0; currentRotationY = 0;
@@ -1855,7 +2067,7 @@
                 currentMaskObj = maskObj;
                 
                 const maskImgEl = document.getElementById('postcard-mask-img');
-                maskImgEl.src = maskObj.image;
+                maskImgEl.src = safeImageUrl(maskObj.image);
                 maskImgEl.onerror = function() { this.src = fallbackSVG; };
                 
                 document.getElementById('postcard-photo').src = photoDataUrl;
@@ -2079,7 +2291,13 @@
                 }
             });
 
-            document.getElementById('start-ar-btn').addEventListener('click', () => {
+            document.getElementById('start-ar-btn').addEventListener('click', async () => {
+                if (!cameraActive) {
+                    showToast("开启 AR 前需要先授权摄像头。", "info");
+                    const ready = await initializeHandsDetection();
+                    if (!ready) return;
+                }
+
                 soundSynth.playEntrance(); 
                 arStartTime = Date.now(); // 🌟 记录 AR 开启的时间戳，激活防御锁
 
@@ -2103,7 +2321,7 @@
                         arCurrentModel = modelGroup; arCurrentModel.visible = false; arScene.add(arCurrentModel); 
                     });
                 } else if(mask.image) { 
-                    arMaskImage.src = mask.image; 
+                    arMaskImage.src = safeImageUrl(mask.image); 
                     arMaskImage.onerror = function() { this.src = fallbackSVG; };
                 } else return showToast("该文物缺失图像或3D资产，无法开启映射。", "error"); 
                 
@@ -2125,7 +2343,7 @@
                 
                 if (typeof arCurrentModel !== 'undefined' && arCurrentModel) { disposeThreeObject(arCurrentModel); arScene.remove(arCurrentModel); arCurrentModel = null; if(typeof arRenderer !== 'undefined' && arRenderer) arRenderer.clear(); }
             
-                document.getElementById('webcam-container').classList.remove('hidden');
+                if (cameraActive) document.getElementById('webcam-container').classList.remove('hidden');
                 document.getElementById('ar-bg-video').pause();
 
                 document.getElementById('main-header').classList.remove('hidden', 'fade-out'); 
@@ -2146,14 +2364,17 @@
                 if(capturedPhotos.length === 0) { grid.innerHTML = `<div class="col-span-full text-center text-stone-500 py-10">暂无游客留影记录。</div>`; return; }
                 capturedPhotos.forEach((photo, idx) => {
                     const card = document.createElement('div'); card.className = "bg-stone-950 border border-pink-900/40 rounded-xl overflow-hidden shadow-lg p-2";
+                    const safePhotoSrc = safeImageUrl(photo.src);
+                    const safePhotoName = escapeHTML(photo.maskName);
+                    const safePhotoDate = escapeHTML(photo.date);
                     card.innerHTML = `
                         <div class="aspect-video bg-black rounded-lg overflow-hidden relative group">
-                            <img src="${photo.src}" class="w-full h-full object-cover transform scale-x-[-1]">
+                            <img src="${safePhotoSrc}" alt="${safePhotoName}留影" loading="lazy" decoding="async" class="w-full h-full object-cover transform scale-x-[-1]">
                             <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                                 <a href="${photo.src}" download="游客留影_${idx}.jpg" class="bg-pink-600 text-white px-3 py-1.5 rounded-full text-xs flex items-center gap-2 hover:bg-pink-500 transition"><i class="fa-solid fa-download"></i> 导出</a>
+                                 <a href="${safePhotoSrc}" download="游客留影_${idx}.jpg" class="bg-pink-600 text-white px-3 py-1.5 rounded-full text-xs flex items-center gap-2 hover:bg-pink-500 transition"><i class="fa-solid fa-download"></i> 导出</a>
                             </div>
                         </div>
-                        <div class="pt-2 px-1"><div class="text-xs font-bold text-pink-300 truncate">${photo.maskName}</div><div class="text-[10px] text-stone-500">${photo.date}</div></div>
+                        <div class="pt-2 px-1"><div class="text-xs font-bold text-pink-300 truncate">${safePhotoName}</div><div class="text-[10px] text-stone-500">${safePhotoDate}</div></div>
                     `; grid.appendChild(card);
                 });
             }
@@ -2178,7 +2399,12 @@
             document.getElementById('cancel-auth-btn').addEventListener('click', () => { soundSynth.playClick(); authModal.classList.add('hidden'); });
             document.getElementById('confirm-auth-btn').addEventListener('click', () => {
                 soundSynth.playClick();
-                if (document.getElementById('admin-pwd-input').value === 'admin') { isAdminMode = true; authModal.classList.add('hidden'); showToast("高级权限已开启", "success"); updateAdminUI(); } 
+                const enteredCode = document.getElementById('admin-pwd-input').value;
+                if (!adminCode) {
+                    showToast("馆长模式未配置授权码。请在部署环境设置 window.MUSEUM_ADMIN_CODE。", "error");
+                    return;
+                }
+                if (enteredCode === adminCode) { isAdminMode = true; authModal.classList.add('hidden'); showToast("高级权限已开启", "success"); updateAdminUI(); } 
                 else { showToast("授权码错误", "error"); document.getElementById('admin-pwd-input').value = ''; }
             });
 
@@ -2208,7 +2434,7 @@
                 const list = document.getElementById('cfg-categories-list'); list.innerHTML = '';
                 window.appCategories.forEach((cat, idx) => {
                     const badge = document.createElement('div'); badge.className = "flex items-center gap-1 bg-emerald-950/50 text-emerald-300 border border-emerald-800/50 px-2 py-1 rounded shadow-sm";
-                    badge.innerHTML = `<span>${cat}</span><button class="text-red-400 hover:text-red-300 ml-1 interactive-element transition" data-idx="${idx}"><i class="fa-solid fa-xmark"></i></button>`;
+                    badge.innerHTML = `<span>${escapeHTML(cat)}</span><button class="text-red-400 hover:text-red-300 ml-1 interactive-element transition" data-idx="${idx}" aria-label="删除${escapeHTML(cat)}"><i class="fa-solid fa-xmark"></i></button>`;
                     badge.querySelector('button').addEventListener('click', (e) => {
                         soundSynth.playClick(); const deletedCat = window.appCategories[e.currentTarget.dataset.idx]; window.appCategories.splice(e.currentTarget.dataset.idx, 1);
                         masksData.forEach(m => { if(m.materialType === deletedCat) m.materialType = '未分类'; }); renderCategoriesUI(); updateFilterOptions(); showToast(`删除了大厅: ${deletedCat}`, "error");
@@ -2217,7 +2443,7 @@
                 const subList = document.getElementById('cfg-subcategories-list'); subList.innerHTML = '';
                 window.appSubCategories.forEach((sub, idx) => {
                     const badge = document.createElement('div'); badge.className = "flex items-center gap-1 bg-blue-950/50 text-blue-300 border border-blue-800/50 px-2 py-1 rounded shadow-sm";
-                    badge.innerHTML = `<span>${sub}</span><button class="text-red-400 hover:text-red-300 ml-1 interactive-element transition" data-idx="${idx}"><i class="fa-solid fa-xmark"></i></button>`;
+                    badge.innerHTML = `<span>${escapeHTML(sub)}</span><button class="text-red-400 hover:text-red-300 ml-1 interactive-element transition" data-idx="${idx}" aria-label="删除${escapeHTML(sub)}"><i class="fa-solid fa-xmark"></i></button>`;
                     badge.querySelector('button').addEventListener('click', (e) => {
                         soundSynth.playClick(); const deletedSub = window.appSubCategories[e.currentTarget.dataset.idx]; window.appSubCategories.splice(e.currentTarget.dataset.idx, 1);
                         masksData.forEach(m => { if(m.subCategory === deletedSub) m.subCategory = '未分类'; }); renderCategoriesUI(); updateFilterOptions(); showToast(`删除了子类: ${deletedSub}`, "error");
@@ -2245,9 +2471,11 @@
 
             document.getElementById('save-config-btn').addEventListener('click', () => {
                 soundSynth.playClick();
-                document.getElementById('landing-museum-tag').innerHTML = `<i class=\"fa-solid fa-building-columns mr-2\"></i>` + document.getElementById('cfg-landing-tag').value;
+                const landingTagText = document.getElementById('cfg-landing-tag').value;
+                const displayTag = document.getElementById('display-tag');
+                if (displayTag) displayTag.innerText = landingTagText;
                 document.getElementById('landing-main-title').innerText = document.getElementById('cfg-landing-title').value; document.getElementById('landing-sub-title').innerText = document.getElementById('cfg-landing-sub').value;
-                document.getElementById('landing-desc').innerHTML = document.getElementById('cfg-landing-desc').value.replace(/\n/g, '<br>'); document.getElementById('header-main-title').innerText = document.getElementById('cfg-header-title').value;
+                document.getElementById('landing-desc').innerHTML = textToLineBreakHTML(document.getElementById('cfg-landing-desc').value); document.getElementById('header-main-title').innerText = document.getElementById('cfg-header-title').value;
                 document.getElementById('footer-copyright-text').innerText = document.getElementById('cfg-footer-text').value; document.getElementById('landing-watermark').innerText = document.getElementById('cfg-footer-text').value;
 
                 bgmConfig.mode = document.querySelector('input[name="bgm-type"]:checked').value; bgmConfig.volume = parseInt(document.getElementById('cfg-bgm-volume').value) / 100; bgmConfig.proceduralPitch = parseInt(document.getElementById('cfg-bgm-pitch').value);
@@ -2317,8 +2545,7 @@
                             },
                             systemInstruction: { parts: [{ text: "你是一个专业的历史专家和艺术鉴赏家，必须根据提供的图片真实视觉特征输出生动、具体的文物讲解文案。" }] }
                         };
-                        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-                        const result = await fetchGeminiWithRetry(url, payload);
+                        const result = await callGemini(payload);
                         const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
                         
                         if (text) {
@@ -2532,18 +2759,67 @@
 
             // --- 手势识别引擎 ---
             const toggleCameraBtn = document.getElementById('toggle-camera-btn');
+
+            function setCameraButtonActive(active) {
+                toggleCameraBtn.innerHTML = active
+                    ? `<i class="fa-solid fa-power-off"></i> <span class="hidden md:inline">关闭手势</span>`
+                    : `<i class="fa-solid fa-video"></i><span class="hidden md:inline">开启手势</span>`;
+                toggleCameraBtn.setAttribute('aria-label', active ? '关闭手势摄像头' : '开启手势摄像头');
+                toggleCameraBtn.classList.toggle('bg-red-700', active);
+                toggleCameraBtn.classList.toggle('hover:bg-red-800', active);
+                toggleCameraBtn.classList.toggle('text-white', active);
+                toggleCameraBtn.classList.toggle('bg-amber-600', !active);
+                toggleCameraBtn.classList.toggle('hover:bg-amber-500', !active);
+                toggleCameraBtn.classList.toggle('text-black', !active);
+            }
+
+            function requestCameraConsent() {
+                if (cameraConsentGranted) return true;
+                cameraConsentGranted = window.confirm("开启手势或 AR 前需要使用摄像头。画面仅在当前浏览器内用于识别手势和人脸定位，不会自动上传。是否继续？");
+                return cameraConsentGranted;
+            }
+
+            function stopHandsDetection() {
+                try { if (cameraController && typeof cameraController.stop === 'function') cameraController.stop(); } catch (e) {}
+                try { if (handDetector && typeof handDetector.close === 'function') handDetector.close(); } catch (e) {}
+                try { if (faceMesh && typeof faceMesh.close === 'function') faceMesh.close(); } catch (e) {}
+                if (videoElement.srcObject) {
+                    videoElement.srcObject.getTracks().forEach(track => track.stop());
+                    videoElement.srcObject = null;
+                }
+                document.getElementById('ar-bg-video').srcObject = null;
+                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                cameraController = null;
+                handDetector = null;
+                faceMesh = null;
+                cameraActive = false;
+                resetPinchTracking();
+                cursorEl.classList.add('hidden');
+                document.getElementById('webcam-container').classList.add('hidden');
+                statusText.innerText = "视觉离线";
+                statusDot.className = "w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-red-500 animate-pulse";
+                setCameraButtonActive(false);
+            }
             
             async function initializeHandsDetection() {
+                if (cameraActive) return true;
+                if (location.protocol === 'file:') {
+                    showEnvironmentWarningIfNeeded();
+                    showToast("摄像头无法在 file:// 页面稳定工作，请点击顶部 localhost 预览地址后再开启手势。", "error");
+                    return false;
+                }
+                if (!requestCameraConsent()) return false;
                 statusText.innerText = "激活 AI 视觉..."; statusDot.className = "w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-amber-500 animate-pulse";
                 
                 try {
                     const hands = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+                    handDetector = hands;
                     
                     hands.setOptions({ 
                         maxNumHands: 1, 
                         modelComplexity: 1, 
-                        minDetectionConfidence: 0.85, 
-                        minTrackingConfidence: 0.90 
+                        minDetectionConfidence: 0.78, 
+                        minTrackingConfidence: 0.76 
                     });
                     hands.onResults(onHandResults);
                     
@@ -2563,20 +2839,236 @@
                         },
                         width: 640, height: 480 
                     });
+                    cameraController = cam;
                     
-                    cam.start().then(() => { 
-                        cameraActive = true; 
-                        statusText.innerText = "智能追踪运行中"; 
-                        statusDot.className = "w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500"; 
-                        cursorEl.classList.remove('hidden'); 
-                    }).catch(e => { statusText.innerText = "摄像头错误"; });
+                    await cam.start();
+                    cameraActive = true; 
+                    statusText.innerText = "智能追踪运行中"; 
+                    statusDot.className = "w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500"; 
+                    cursorEl.classList.remove('hidden');
+                    document.getElementById('webcam-container').classList.remove('hidden');
+                    setCameraButtonActive(true);
+                    return true;
                 } catch(e) {
                     console.error("AI 模型加载失败", e);
                     statusText.innerText = "加载失败";
+                    showToast("摄像头或视觉模型启动失败，请检查浏览器权限与网络。", "error");
+                    stopHandsDetection();
+                    return false;
                 }
             }
 
             function getDistance(pt1, pt2) { return Math.sqrt(Math.pow(pt1.x - pt2.x, 2) + Math.pow(pt1.y - pt2.y, 2)); }
+
+            function isUsableLandmark(pt) {
+                return pt
+                    && Number.isFinite(pt.x)
+                    && Number.isFinite(pt.y)
+                    && pt.x >= -0.12 && pt.x <= 1.12
+                    && pt.y >= -0.12 && pt.y <= 1.12;
+            }
+
+            function averagePoint(points) {
+                const total = points.reduce((sum, pt) => ({ x: sum.x + pt.x, y: sum.y + pt.y }), { x: 0, y: 0 });
+                return { x: total.x / points.length, y: total.y / points.length };
+            }
+
+            function getStableHandScale(landmarks) {
+                const scaleCandidates = [
+                    getDistance(landmarks[0], landmarks[12]),
+                    getDistance(landmarks[0], landmarks[9]) * 2.05,
+                    getDistance(landmarks[5], landmarks[17]) * 2.2,
+                    getDistance(landmarks[0], landmarks[5]) * 2.2
+                ].filter(Number.isFinite);
+                return Math.max(...scaleCandidates, 0);
+            }
+
+            function evaluatePinchGesture(landmarks, handScale) {
+                const requiredPoints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 16, 17, 20];
+                if (!requiredPoints.every(index => isUsableLandmark(landmarks[index])) || handScale < PINCH_CONFIG.minHandScale) {
+                    return { trackable: false, pinchRatio: Infinity, isStrongPinch: false, cancelClick: true, isFist: false };
+                }
+
+                const thumbTip = landmarks[4];
+                const indexTip = landmarks[8];
+                const palmCenter = averagePoint([landmarks[0], landmarks[5], landmarks[9], landmarks[13], landmarks[17]]);
+                const pinchCenter = averagePoint([thumbTip, indexTip]);
+
+                const pinchRatio = getDistance(thumbTip, indexTip) / handScale;
+                const indexChainRatio = (
+                    getDistance(landmarks[5], landmarks[6])
+                    + getDistance(landmarks[6], landmarks[7])
+                    + getDistance(landmarks[7], landmarks[8])
+                ) / handScale;
+                const thumbChainRatio = (
+                    getDistance(landmarks[1], landmarks[2])
+                    + getDistance(landmarks[2], landmarks[3])
+                    + getDistance(landmarks[3], landmarks[4])
+                ) / handScale;
+                const indexReachRatio = getDistance(indexTip, landmarks[5]) / handScale;
+                const thumbReachRatio = getDistance(thumbTip, landmarks[2]) / handScale;
+                const pinchAwayFromPalmRatio = getDistance(pinchCenter, palmCenter) / handScale;
+                const depthGap = Number.isFinite(thumbTip.z) && Number.isFinite(indexTip.z) ? Math.abs(thumbTip.z - indexTip.z) : 0;
+                const foldedFingerCount = [8, 12, 16, 20].filter(index => getDistance(landmarks[index], palmCenter) / handScale < 0.32).length;
+                const thumbFoldedRatio = getDistance(thumbTip, palmCenter) / handScale;
+                const compactFist = foldedFingerCount >= 4 && thumbFoldedRatio < 0.36 && pinchAwayFromPalmRatio < 0.34;
+                const tuckedFist = foldedFingerCount >= 3 && thumbFoldedRatio < 0.30 && pinchAwayFromPalmRatio < 0.26 && indexReachRatio < 0.20;
+                const isFist = compactFist || tuckedFist;
+
+                if (isFist) {
+                    return { trackable: false, pinchRatio, isStrongPinch: false, cancelClick: true, isFist: true };
+                }
+
+                const fingersAreTraceable =
+                    indexChainRatio > 0.14
+                    && thumbChainRatio > 0.10
+                    && indexReachRatio > 0.12
+                    && thumbReachRatio > 0.08
+                    && pinchAwayFromPalmRatio > 0.055
+                    && depthGap < 0.36;
+
+                return {
+                    trackable: fingersAreTraceable,
+                    pinchRatio,
+                    isStrongPinch: pinchRatio < PINCH_CONFIG.strongStartRatio,
+                    cancelClick: !fingersAreTraceable,
+                    isFist: false
+                };
+            }
+
+            function updatePinchState(landmarks, handScale) {
+                const gesture = evaluatePinchGesture(landmarks, handScale);
+                const now = performance.now();
+
+                if (gesture.isFist) {
+                    pinchCandidateFrames = 0;
+                    pinchReleaseFrames = 0;
+                    pinchInvalidFrames = 0;
+                    return { isPinching: false, cancelClick: true, trackable: false, isFist: true };
+                }
+
+                if (!gesture.trackable) {
+                    pinchCandidateFrames = 0;
+                    pinchReleaseFrames = 0;
+                    pinchInvalidFrames += 1;
+                    return {
+                        isPinching: isPinchAction && pinchInvalidFrames <= PINCH_CONFIG.invalidGraceFrames,
+                        cancelClick: true,
+                        trackable: false,
+                        isFist: false
+                    };
+                }
+
+                pinchInvalidFrames = 0;
+
+                if (isPinchAction) {
+                    if (gesture.pinchRatio < PINCH_CONFIG.releaseRatio) {
+                        pinchReleaseFrames = 0;
+                        return { isPinching: true, cancelClick: false, trackable: true, isFist: false };
+                    }
+
+                    pinchReleaseFrames += 1;
+                    const released = pinchReleaseFrames >= PINCH_CONFIG.releaseFrames;
+                    if (released) lastPinchEndAt = now;
+                    return { isPinching: !released, cancelClick: false, trackable: true, isFist: false };
+                }
+
+                pinchReleaseFrames = 0;
+                if (now - lastPinchEndAt < PINCH_CONFIG.cooldownMs) {
+                    pinchCandidateFrames = 0;
+                    return { isPinching: false, cancelClick: false, trackable: true, isFist: false };
+                }
+
+                if (gesture.isStrongPinch) {
+                    pinchCandidateFrames = PINCH_CONFIG.confirmFrames;
+                } else if (gesture.pinchRatio < PINCH_CONFIG.startRatio) {
+                    pinchCandidateFrames += 1;
+                } else {
+                    pinchCandidateFrames = 0;
+                }
+
+                return {
+                    isPinching: pinchCandidateFrames >= PINCH_CONFIG.confirmFrames,
+                    cancelClick: false,
+                    trackable: true,
+                    isFist: false
+                };
+            }
+
+            function resetPinchTracking() {
+                pinchCandidateFrames = 0;
+                pinchReleaseFrames = 0;
+                pinchInvalidFrames = 0;
+                isPinchAction = false;
+                isDraggingScroll = false;
+                possibleClickElement = null;
+                gestureLockedTarget = null;
+                gestureStartedAsClick = false;
+                handPrevX = null;
+                handPrevY = null;
+                if (cursorEl) cursorEl.classList.remove('pinch');
+            }
+
+            function isMainGalleryVisible() {
+                return !document.getElementById('main-gallery').classList.contains('hidden');
+            }
+
+            function isMaskCardGestureTarget(targetEl) {
+                return !!(targetEl && targetEl.dataset && targetEl.dataset.index !== undefined && isMainGalleryVisible());
+            }
+
+            function isCategoryCardGestureTarget(targetEl) {
+                return !!(
+                    targetEl
+                    && targetEl.dataset
+                    && targetEl.dataset.gestureTarget === 'category-card'
+                    && !document.getElementById('category-selection-view').classList.contains('hidden')
+                );
+            }
+
+            function isGestureButtonTarget(targetEl) {
+                if (!targetEl) return false;
+                const buttonEl = targetEl.closest ? targetEl.closest('button') : null;
+                return !!buttonEl || ['back-btn', 'back-to-categories-btn', 'start-ar-btn', 'exit-ar-btn'].includes(targetEl.id);
+            }
+
+            function shouldPrioritizeGestureClick(targetEl) {
+                return isGestureButtonTarget(targetEl) || isCategoryCardGestureTarget(targetEl);
+            }
+
+            function clearMaskGesturePending(exceptEl = null) {
+                document.querySelectorAll('#mask-grid .gesture-pending-pinch').forEach(el => {
+                    if (el !== exceptEl) el.classList.remove('gesture-pending-pinch');
+                });
+            }
+
+            function confirmMaskDoublePinch(index, targetEl) {
+                const now = performance.now();
+                const confirmed = lastMaskGestureTapIndex === index && now - lastMaskGestureTapAt <= MASK_DOUBLE_TAP_MS;
+
+                if (confirmed) {
+                    lastMaskGestureTapIndex = null;
+                    lastMaskGestureTapAt = 0;
+                    clearMaskGesturePending();
+                    return true;
+                }
+
+                lastMaskGestureTapIndex = index;
+                lastMaskGestureTapAt = now;
+                clearMaskGesturePending(targetEl);
+                if (targetEl) targetEl.classList.add('gesture-pending-pinch');
+                showToast('再次捏合进入单独展示', 'info');
+
+                setTimeout(() => {
+                    if (lastMaskGestureTapIndex === index && performance.now() - lastMaskGestureTapAt >= MASK_DOUBLE_TAP_MS) {
+                        lastMaskGestureTapIndex = null;
+                        lastMaskGestureTapAt = 0;
+                        clearMaskGesturePending();
+                    }
+                }, MASK_DOUBLE_TAP_MS + 60);
+
+                return false;
+            }
             
             function onHandResults(results) {
                 overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
@@ -2586,10 +3078,10 @@
                     const landmarks = results.multiHandLandmarks[0]; 
                     
                     const wristRaw = landmarks[0];
-                    const middleTip = landmarks[12];
-                    const handSize = getDistance(wristRaw, middleTip);
+                    const handScale = getStableHandScale(landmarks);
                     
-                    if (handSize < 0.15) {
+                    if (handScale < PINCH_CONFIG.minHandScale) {
+                        resetPinchTracking();
                         return; 
                     }
 
@@ -2597,7 +3089,7 @@
                         const jumpDist = getDistance(wristRaw, lastWristRaw);
                         if (jumpDist > 0.35) { 
                             lastWristRaw = wristRaw; 
-                            handPrevX = null; handPrevY = null; 
+                            resetPinchTracking();
                             return; 
                         }
                     }
@@ -2615,7 +3107,7 @@
                     let mappedY = ((palmJoint.y - margin) / (1 - 2 * margin)) * window.innerHeight;
                     const sensVal = parseInt(document.getElementById('sensitivity-slider').value) / 100;
                     
-                    if (currentHoveredElement && !isFistAction) {
+                    if (currentHoveredElement && !isPinchAction) {
                         const rect = currentHoveredElement.getBoundingClientRect();
                         const btnCenterX = rect.left + rect.width / 2;
                         const btnCenterY = rect.top + rect.height / 2;
@@ -2627,16 +3119,30 @@
                     cursorX += (targetCursorX - cursorX) * sensVal; cursorY += (targetCursorY - cursorY) * sensVal;
                     cursorEl.style.left = `${cursorX}px`; cursorEl.style.top = `${cursorY}px`;
                     
-                    const wrist = landmarks[0], fingerTips = [4, 8, 12, 16, 20];
-                    let totalDist = 0; fingerTips.forEach(tipIdx => totalDist += getDistance(landmarks[tipIdx], wrist));
-                    
-                    const isFist = totalDist < 1.05; 
-                    const isHandOpen = totalDist > 1.45; 
+                    const pinchState = updatePinchState(landmarks, handScale);
+                    const isPinching = pinchState.isPinching;
+                    if (pinchState.cancelClick) possibleClickElement = null;
                     
                     if (isARMode) {
                         checkHoverCollision(cursorX, cursorY, isLandingActive);
-                        if (isFist) { if (currentHoveredElement && currentHoveredElement.id === 'exit-ar-btn') { isFistAction = true; cursorEl.classList.add('fist'); handleGestureClick(currentHoveredElement); return; } if (arShutterState === 1) { arShutterState = 0; takeARPhoto(); } }
-                        if (isHandOpen) { arShutterState = 1; cursorEl.style.borderColor = "#10b981"; } else cursorEl.style.borderColor = "rgba(245, 158, 11, 0.8)";
+                        if (isPinching) {
+                            if (!isPinchAction) {
+                                isPinchAction = true;
+                                cursorEl.classList.add('pinch');
+                                if (currentHoveredElement && currentHoveredElement.id === 'exit-ar-btn') {
+                                    handleGestureClick(currentHoveredElement);
+                                    return;
+                                }
+                                if (arShutterState === 0) takeARPhoto();
+                            }
+                            cursorEl.style.borderColor = "#10b981";
+                        } else {
+                            if (isPinchAction) {
+                                isPinchAction = false;
+                                cursorEl.classList.remove('pinch');
+                            }
+                            cursorEl.style.borderColor = "rgba(245, 158, 11, 0.8)";
+                        }
                         return; 
                     }
                     
@@ -2662,15 +3168,20 @@
                         }
                     }
 
-                    // ★ 核心修复：确保握拳时才进行 3D 旋转或页面滚动
-                    if (isFist) { 
-                        if (!isFistAction) { 
-                            isFistAction = true; 
-                            cursorEl.classList.add('fist'); 
-                            possibleClickElement = currentHoveredElement; 
+                    const currentTargetPrefersClick = shouldPrioritizeGestureClick(currentHoveredElement);
+                    if (currentTargetPrefersClick) activeScrollContainer = null;
+
+                    // ★ 核心修复：确保捏合时才进行 3D 旋转或页面滚动
+                    if (isPinching) { 
+                        if (!isPinchAction) { 
+                            isPinchAction = true; 
+                            cursorEl.classList.add('pinch'); 
+                            gestureLockedTarget = currentHoveredElement;
+                            gestureStartedAsClick = currentTargetPrefersClick;
+                            possibleClickElement = gestureLockedTarget; 
                             
                             // 1. 开始拖拽滚动
-                            if (activeScrollContainer) { 
+                            if (activeScrollContainer && !gestureStartedAsClick) { 
                                 isDraggingScroll = true; 
                                 dragStartCursorY = cursorY; 
                                 dragStartCursorX = cursorX; 
@@ -2679,7 +3190,7 @@
                             }
                             
                             // 2. 开始模型旋转（仅在详情页左侧进行时）
-                            if (isDetailViewActive && !activeScrollContainer) {
+                            if (isDetailViewActive && !activeScrollContainer && !gestureStartedAsClick) {
                                 handPrevX = cursorX;
                                 handPrevY = cursorY;
                             }
@@ -2690,19 +3201,20 @@
                                 let dx = cursorX - dragStartCursorX;
                                 
                                 // 防抖：移动剧烈时作废潜在的误触点击
-                                if (Math.abs(dy) > 15 || Math.abs(dx) > 15) possibleClickElement = null; 
+                                const tapTolerance = isMaskCardGestureTarget(possibleClickElement) ? GESTURE_TAP_TOLERANCE : 22;
+                                if (Math.abs(dy) > tapTolerance || Math.abs(dx) > tapTolerance) possibleClickElement = null; 
                                 
                                 let dest = dragStartScrollY - dy * 2.5;
                                 const maxScroll = activeScrollContainer.scrollHeight - activeScrollContainer.clientHeight;
                                 activeScrollContainer.scrollTop = Math.max(0, Math.min(dest, maxScroll));
                             }
                             // 正在旋转模型
-                            else if (isDetailViewActive && activeMaskIndex !== null && !activeScrollContainer) {
+                            else if (isDetailViewActive && activeMaskIndex !== null && !activeScrollContainer && !gestureStartedAsClick) {
                                 if (handPrevX !== null && handPrevY !== null) {
                                     let dx = cursorX - handPrevX, dy = cursorY - handPrevY;
                                     
                                     // 防误触
-                                    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) possibleClickElement = null;
+                                    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) possibleClickElement = null;
                                     
                                     targetRotationY += dx * 0.02 * sensVal * 2; 
                                     targetRotationX += dy * 0.02 * sensVal * 2; 
@@ -2715,14 +3227,17 @@
                         }
                     } else {
                         // ★ 核心修复：张开手掌时，一切交互动作彻底释放停止
-                        if (isFistAction) { 
-                            isFistAction = false; 
-                            cursorEl.classList.remove('fist'); 
+                        if (isPinchAction) { 
+                            isPinchAction = false; 
+                            cursorEl.classList.remove('pinch'); 
                             
-                            if (possibleClickElement && currentHoveredElement === possibleClickElement) {
+                            const lockedTargetStillValid = gestureStartedAsClick || isMaskCardGestureTarget(possibleClickElement);
+                            if (possibleClickElement && (currentHoveredElement === possibleClickElement || lockedTargetStillValid)) {
                                 handleGestureClick(possibleClickElement);
                             }
                             possibleClickElement = null;
+                            gestureLockedTarget = null;
+                            gestureStartedAsClick = false;
                             
                             if (isDraggingScroll) { 
                                 isDraggingScroll = false; 
@@ -2734,12 +3249,11 @@
                         }
                     }
                     
-                    // 只有在没握拳（浏览状态）时才检测悬停效果，防止握拳拖拽时按钮乱闪
-                    if (!isFist && !isARMode) checkHoverCollision(cursorX, cursorY, isLandingActive);
+                    // 只有在没捏合（浏览状态）时才检测悬停效果，防止捏合拖拽时按钮乱闪
+                    if (!isPinching && !isARMode) checkHoverCollision(cursorX, cursorY, isLandingActive);
                 } else { 
-                    handPrevX = null; 
-                    handPrevY = null; 
                     lastWristRaw = null; 
+                    resetPinchTracking();
                     arShutterState = 0; 
                 }
             }
@@ -2769,8 +3283,16 @@
             function handleGestureClick(targetEl) {
                 if (targetEl) {
                     if (targetEl.classList.contains('interactive-element')) {
-                        if (targetEl.dataset.index !== undefined) { if (isBatchSelectMode) toggleBatchSelection(parseInt(targetEl.dataset.index)); else selectMask(parseInt(targetEl.dataset.index)); } 
-                        else targetEl.click();
+                        if (targetEl.dataset.index !== undefined) {
+                            const targetIndex = parseInt(targetEl.dataset.index);
+                            if (isBatchSelectMode) {
+                                toggleBatchSelection(targetIndex);
+                            } else if (isMaskCardGestureTarget(targetEl)) {
+                                if (confirmMaskDoublePinch(targetIndex, targetEl)) selectMask(targetIndex);
+                            } else {
+                                selectMask(targetIndex);
+                            }
+                        } else targetEl.click();
                     } else if (targetEl.id === 'back-btn') goBackToGallery();
                     else if (targetEl.id === 'back-to-categories-btn') document.getElementById('back-to-categories-btn').click();
                     else if (targetEl.id === 'close-postcard-btn') document.getElementById('close-postcard-btn').click();
@@ -2781,13 +3303,14 @@
                 }
             }
 
-            toggleCameraBtn.addEventListener('click', () => {
+            toggleCameraBtn.addEventListener('click', async () => {
                 soundSynth.playClick();
-                if (!cameraActive) { initializeHandsDetection(); toggleCameraBtn.innerHTML = `<i class=\"fa-solid fa-power-off\"></i> <span class="hidden md:inline">关闭手势</span>`; toggleCameraBtn.classList.replace('bg-amber-600', 'bg-red-700'); toggleCameraBtn.classList.replace('hover:bg-amber-500', 'hover:bg-red-800'); toggleCameraBtn.classList.add('text-white'); } 
-                else location.reload();
+                if (!cameraActive) await initializeHandsDetection();
+                else stopHandsDetection();
             });
 
             // --- 🌟 真正的初始化执行入口 🌟 ---
+            showEnvironmentWarningIfNeeded();
             initThreeJS(); 
             
             // 启动外部数据驱动加载
@@ -2799,16 +3322,7 @@
                 initParticles(); 
                 animateRender(); 
                 
-                // 延迟开启摄像头，保证界面优先加载完成
-                setTimeout(() => {
-                    if (!cameraActive) { 
-                        initializeHandsDetection(); 
-                        toggleCameraBtn.innerHTML = `<i class=\"fa-solid fa-power-off\"></i> <span class="hidden md:inline">关闭追踪</span>`; 
-                        toggleCameraBtn.classList.replace('bg-amber-600', 'bg-red-700'); 
-                        toggleCameraBtn.classList.add('text-white'); 
-                    }
-                }, 500); 
-
+                setCameraButtonActive(false);
                 resetActivity();
                 triggerLandingAnimationLoop();
             });

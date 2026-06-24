@@ -5,6 +5,13 @@
     "subTitle": "全息文物 AI 交互特展",
     "description": "跨越千年的神秘祭祀，凝固于木石之上的生灵低语。",
     "footerText": "© 2026 贺州文化博物馆 - AI 交互特展智能系统 v2.0"
+
+  "heroImage": "./images/001正.jpg",
+  "heroObjUrl": "./models/mask-001.glb",
+  "heroMtlUrl": "",
+  "heroTextureUrl": "",
+  "heroModelFormat": "glb",
+  "heroScale": 1
   },
   "masksData": [
     {"id": 1, "name": "木雕面具 1", "materialType": "傩戏面具馆", "subCategory": "精选藏品", "image": "./images/1.jpg", "description": "第 1 件展品"},

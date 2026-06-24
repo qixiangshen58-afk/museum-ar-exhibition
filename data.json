@@ -102,8 +102,8 @@
   "name": "木雕面具 91",
   "materialType": "3D傩戏面具馆",
   "subCategory": "精选藏品",
-  "image": "./images/91.jpg",
-  "thumbnail": "./images/91.jpg",
+  "image": "./images/001正.jpg",
+  "thumbnail": "./images/001正.jpg",
   "modelUrl": "./models/mask-001.glb",
   "modelFormat": "glb",
   "description": "第 91 件展品"

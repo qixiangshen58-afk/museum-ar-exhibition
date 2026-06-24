@@ -107,6 +107,61 @@
   "modelUrl": "./models/mask-001.glb",
   "modelFormat": "glb",
   "description": "第 91 件展品"
+},
+    {
+  "id": 92,
+  "name": "木雕面具 92",
+  "materialType": "3D傩戏面具馆",
+  "subCategory": "精选藏品",
+  "image": "./images/002正.jpg",
+  "thumbnail": "./images/002正.jpg",
+  "modelUrl": "./models/mask-002.glb",
+  "modelFormat": "glb",
+  "description": "第 92 件展品"
+},
+    {
+  "id": 93,
+  "name": "木雕面具 93",
+  "materialType": "3D傩戏面具馆",
+  "subCategory": "精选藏品",
+  "image": "./images/003正.jpg",
+  "thumbnail": "./images/003正.jpg",
+  "modelUrl": "./models/mask-003.glb",
+  "modelFormat": "glb",
+  "description": "第 93 件展品"
+},
+    {
+  "id": 94,
+  "name": "木雕面具 94",
+  "materialType": "3D傩戏面具馆",
+  "subCategory": "精选藏品",
+  "image": "./images/004正.jpg",
+  "thumbnail": "./images/004正.jpg",
+  "modelUrl": "./models/mask-004.glb",
+  "modelFormat": "glb",
+  "description": "第 94 件展品"
+},
+    {
+  "id": 95,
+  "name": "木雕面具 95",
+  "materialType": "3D傩戏面具馆",
+  "subCategory": "精选藏品",
+  "image": "./images/005正.jpg",
+  "thumbnail": "./images/005正.jpg",
+  "modelUrl": "./models/mask-005.glb",
+  "modelFormat": "glb",
+  "description": "第 95 件展品"
+},
+    {
+  "id": 96,
+  "name": "木雕面具 96",
+  "materialType": "3D傩戏面具馆",
+  "subCategory": "精选藏品",
+  "image": "./images/006正.jpg",
+  "thumbnail": "./images/006正.jpg",
+  "modelUrl": "./models/mask-006.glb",
+  "modelFormat": "glb",
+  "description": "第 96 件展品"
 }
   ]
 }

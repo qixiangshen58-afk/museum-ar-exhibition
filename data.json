@@ -11,7 +11,7 @@
   "heroMtlUrl": "",
   "heroTextureUrl": "",
   "heroModelFormat": "glb",
-  "heroScale": 1.5
+  "heroScale": 1
   },
   "masksData": [
     {"id": 1, "name": "木雕面具 1", "materialType": "傩戏面具馆", "subCategory": "精选藏品", "image": "./images/1.jpg", "description": "第 1 件展品"},

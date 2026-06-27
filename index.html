@@ -14,6 +14,8 @@
     <meta property="og:type" content="website">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://yrswdxgnktbdrnglciei.supabase.co" crossorigin>
+    <link rel="dns-prefetch" href="//yrswdxgnktbdrnglciei.supabase.co">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Tailwind CSS：已在发布时编译并内联，避免生产环境运行时依赖。 -->
@@ -4976,18 +4978,38 @@
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             // 按需加载大体积外部脚本的通用辅助函数
+            const scriptLoadPromises = new Map();
             function loadScriptOnce(src, attrs = {}) {
-                return new Promise((resolve, reject) => {
-                    if (document.querySelector(`script[data-src="${src}"]`) || document.querySelector(`script[src="${src}"]`)) return resolve();
-                    const s = document.createElement('script');
-                    s.setAttribute('data-src', src);
-                    s.src = src;
-                    s.async = true;
-                    Object.keys(attrs).forEach(k => s.setAttribute(k, attrs[k]));
-                    s.onload = () => resolve();
-                    s.onerror = (e) => reject(new Error('Failed to load ' + src));
-                    document.head.appendChild(s);
+                if (scriptLoadPromises.has(src)) return scriptLoadPromises.get(src);
+
+                const existing = document.querySelector(`script[data-src="${src}"]`) || document.querySelector(`script[src="${src}"]`);
+                if (existing?.dataset.loaded === 'true') return Promise.resolve();
+
+                const promise = new Promise((resolve, reject) => {
+                    const s = existing || document.createElement('script');
+                    const finish = () => {
+                        s.dataset.loaded = 'true';
+                        resolve();
+                    };
+                    const fail = () => {
+                        scriptLoadPromises.delete(src);
+                        reject(new Error('Failed to load ' + src));
+                    };
+
+                    s.addEventListener('load', finish, { once: true });
+                    s.addEventListener('error', fail, { once: true });
+
+                    if (!existing) {
+                        s.setAttribute('data-src', src);
+                        s.src = src;
+                        s.async = true;
+                        Object.keys(attrs).forEach(k => s.setAttribute(k, attrs[k]));
+                        document.head.appendChild(s);
+                    }
                 });
+
+                scriptLoadPromises.set(src, promise);
+                return promise;
             }
 
             // 专门加载 Three.js 与其 OBJ/MTLLoader（按需）
@@ -5062,6 +5084,23 @@
 
                 if (!session || !session.user) throw new Error('无法建立电子明信片匿名会话');
                 return { client: postcardSupabaseClient, user: session.user };
+            }
+
+            let postcardRuntimeWarmupStarted = false;
+            function warmPostcardRuntime() {
+                if (postcardRuntimeWarmupStarted) return;
+                postcardRuntimeWarmupStarted = true;
+
+                const runWarmup = () => {
+                    ensureQRCodeLoaded().catch((error) => console.warn('QRCode 预热失败，生成时会重试。', error));
+                    ensurePostcardStorageReady().catch((error) => console.warn('电子明信片云端预热失败，生成时会重试。', error));
+                };
+
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(runWarmup, { timeout: 2600 });
+                } else {
+                    setTimeout(runWarmup, 1600);
+                }
             }
             // --- 🤖 看门狗机制变量 (Watchdog Variables) ---
             let globalIdleTimer = null;
@@ -7465,7 +7504,7 @@
                 const qrContainer = document.getElementById('postcard-qrcode');
                 qrContainer.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-stone-700 text-xl" aria-hidden="true"></i>';
                 qrContainer.removeAttribute('data-share-url');
-                setPostcardShareStatus('正在生成云端电子明信片...');
+                setPostcardShareStatus('正在生成云端电子明信片，二维码稍后自动出现...');
             }
 
             async function renderPostcardQr(shareUrl) {
@@ -7610,20 +7649,20 @@
             async function createPostcardPhotoBlob() {
                 const image = await loadPostcardCanvasImage(currentPostcardDataUrl);
                 if (!image) throw new Error('无法读取留影照片');
-                const maxEdge = 1800;
+                const maxEdge = 1280;
                 const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
                 const canvas = document.createElement('canvas');
                 canvas.width = Math.max(1, Math.round(image.width * scale));
                 canvas.height = Math.max(1, Math.round(image.height * scale));
                 drawPostcardImageCover(canvas.getContext('2d'), image, 0, 0, canvas.width, canvas.height);
-                return postcardCanvasToBlob(canvas);
+                return postcardCanvasToBlob(canvas, 'image/jpeg', 0.84);
             }
 
             async function createPostcardArtifactBlob() {
                 const image = await loadPostcardCanvasImage(getArtifactThumbnail(currentMaskObj));
                 if (!image) throw new Error('无法读取藏品图像');
                 const bounds = getPostcardOpaqueBounds(image) || { x: 0, y: 0, width: image.width, height: image.height };
-                const maxEdge = 1200;
+                const maxEdge = 900;
                 const scale = Math.min(1, maxEdge / Math.max(bounds.width, bounds.height));
                 const canvas = document.createElement('canvas');
                 canvas.width = Math.max(1, Math.round(bounds.width * scale));
@@ -7843,9 +7882,9 @@
                 return canvas;
             }
 
-            function postcardCanvasToBlob(canvas) {
+            function postcardCanvasToBlob(canvas, type = 'image/jpeg', quality = 0.88) {
                 return new Promise((resolve, reject) => {
-                    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('无法生成明信片图片')), 'image/jpeg', 0.9);
+                    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('无法生成明信片图片')), type, quality);
                 });
             }
 
@@ -7875,9 +7914,11 @@
                 const photoPath = `${basePath}/photo.jpg`;
                 const artifactPath = `${basePath}/artifact.png`;
                 const manifestPath = `${basePath}/manifest.json`;
-                const cardBlob = await postcardCanvasToBlob(await composePostcardCanvas(false));
-                const photoBlob = await createPostcardPhotoBlob();
-                const artifactBlob = await createPostcardArtifactBlob();
+                const [cardBlob, photoBlob, artifactBlob] = await Promise.all([
+                    (async () => postcardCanvasToBlob(await composePostcardCanvas(false), 'image/jpeg', 0.84))(),
+                    createPostcardPhotoBlob(),
+                    createPostcardArtifactBlob()
+                ]);
                 if ([cardBlob, photoBlob, artifactBlob].some((blob) => blob.size > 5 * 1024 * 1024)) {
                     throw new Error('电子明信片超过 5MB 上传限制');
                 }
@@ -7963,6 +8004,7 @@
                 document.getElementById('postcard-desc').innerText = descText;
 
                 showPostcardQrLoading();
+                ensureQRCodeLoaded().catch((error) => console.warn('QRCode 预加载失败，云端链接生成后会重试。', error));
                 postcardModal.classList.remove('hidden');
                 setTimeout(() => {
                     postcardModal.classList.remove('opacity-0', 'scale-95');
@@ -10039,6 +10081,7 @@
                 initParticles(); 
                 initLandingDataStream();
                 animateRender(); 
+                warmPostcardRuntime();
                 
                 setCameraButtonActive(false);
                 resetActivity();

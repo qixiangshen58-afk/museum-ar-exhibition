@@ -3712,8 +3712,8 @@
         }
 
         @keyframes curatedHeroCanvasFloat {
-            0%, 100% { transform: translateY(-3%) rotate(-0.35deg) scale(var(--hero-visual-scale, 1)); }
-            50% { transform: translateY(calc(-3% - 10px)) rotate(0.35deg) scale(var(--hero-visual-scale, 1)); }
+            0%, 100% { transform: translateY(-9%) rotate(-0.25deg) scale(var(--hero-visual-scale, 1)); }
+            50% { transform: translateY(calc(-9% - 8px)) rotate(0.25deg) scale(var(--hero-visual-scale, 1)); }
         }
 
         .hero-orbit-ring,
@@ -3736,7 +3736,7 @@
 
         #hero-three-container {
             z-index: 4;
-            transform: translateY(-3%) scale(var(--hero-visual-scale, 1));
+            transform: translateY(-9%) scale(var(--hero-visual-scale, 1));
             transform-origin: center bottom;
             animation: curatedHeroCanvasFloat var(--slow-motion) ease-in-out infinite;
         }
@@ -4081,12 +4081,12 @@
             }
 
             @keyframes curatedHeroCanvasFloatMobile {
-                0%, 100% { transform: translateY(-32%) rotate(-0.35deg) scale(var(--hero-visual-scale, 1)); }
-                50% { transform: translateY(calc(-32% - 8px)) rotate(0.35deg) scale(var(--hero-visual-scale, 1)); }
+                0%, 100% { transform: translateY(-36%) rotate(-0.25deg) scale(var(--hero-visual-scale, 1)); }
+                50% { transform: translateY(calc(-36% - 7px)) rotate(0.25deg) scale(var(--hero-visual-scale, 1)); }
             }
 
             #hero-three-container {
-                transform: translateY(-32%) scale(var(--hero-visual-scale, 1));
+                transform: translateY(-36%) scale(var(--hero-visual-scale, 1));
                 animation: curatedHeroCanvasFloatMobile var(--slow-motion) ease-in-out infinite;
             }
 
@@ -5256,6 +5256,8 @@
             const HERO_MODEL_WARN_BYTES = 15 * 1024 * 1024;
             const MAX_HERO_MODEL_BYTES = 80 * 1024 * 1024;
             const MAX_HERO_TEXTURE_BYTES = 24 * 1024 * 1024;
+            const HERO_MODEL_BASE_Y = 0.42;
+            const HERO_MODEL_FLOAT_AMPLITUDE = 0.07;
 
             function applyHeroVisualScale() {
                 document.documentElement.style.setProperty('--hero-visual-scale', String(heroVisualScale || 1));
@@ -5302,8 +5304,9 @@
                 modelGroup.userData.originalSize = maxDim;
                 const baseScale = 4.2 / maxDim;
                 modelGroup.userData.baseScale = baseScale;
+                modelGroup.userData.baseY = HERO_MODEL_BASE_Y;
                 modelGroup.scale.set(baseScale, baseScale, baseScale);
-                modelGroup.position.y = 0;
+                modelGroup.position.y = HERO_MODEL_BASE_Y;
                 heroModel = modelGroup;
                 heroScene.add(heroModel);
                 heroImg.classList.add('hidden');
@@ -6534,8 +6537,9 @@
                     if (landingActive) {
                         if (!reduceMotion) {
                             heroModel.rotation.y += 0.006;
-                            heroModel.rotation.x = Math.sin(Date.now() * 0.0008) * 0.08;
-                            heroModel.position.y = Math.sin(Date.now() * 0.0012) * 0.12;
+                            heroModel.rotation.x = Math.sin(Date.now() * 0.0008) * 0.045;
+                            const heroBaseY = Number.isFinite(heroModel.userData?.baseY) ? heroModel.userData.baseY : HERO_MODEL_BASE_Y;
+                            heroModel.position.y = heroBaseY + ((Math.sin(Date.now() * 0.0012) + 1) / 2) * HERO_MODEL_FLOAT_AMPLITUDE;
                         }
                         heroRenderer.render(heroScene, heroCamera);
                     }

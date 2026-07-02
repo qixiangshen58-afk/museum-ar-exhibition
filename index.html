@@ -3493,6 +3493,179 @@
             background: rgba(69, 48, 18, 0.52) !important;
         }
 
+        @media (min-width: 768px) {
+            #detail-view > .detail-info-panel {
+                min-height: 0 !important;
+                overflow: hidden !important;
+            }
+
+            .detail-panel-scroll {
+                display: flex !important;
+                flex-direction: column !important;
+                height: 100% !important;
+                min-height: 0 !important;
+                padding: clamp(24px, 2.45vw, 44px) clamp(24px, 3vw, 54px) clamp(18px, 1.8vw, 28px) !important;
+                overflow: hidden !important;
+            }
+
+            .detail-panel-header {
+                flex: 0 0 auto !important;
+                margin: 0 0 clamp(14px, 1.4vw, 22px) !important;
+            }
+
+            .detail-tag-row {
+                gap: 8px !important;
+                margin-bottom: clamp(14px, 1.3vw, 22px) !important;
+            }
+
+            .detail-tag-row > span {
+                min-height: 28px !important;
+                padding: 5px 10px !important;
+                font-size: clamp(0.58rem, 0.68vw, 0.74rem) !important;
+            }
+
+            #detail-title {
+                font-size: clamp(2.05rem, 3.3vw, 3.65rem) !important;
+                line-height: 1.05 !important;
+                letter-spacing: 0.065em !important;
+            }
+
+            .detail-serial-line {
+                gap: 18px !important;
+                margin-top: clamp(14px, 1.4vw, 22px) !important;
+                font-size: clamp(0.68rem, 0.76vw, 0.84rem) !important;
+            }
+
+            .detail-facts-grid {
+                flex: 0 0 auto !important;
+                column-gap: clamp(20px, 2.3vw, 38px) !important;
+                row-gap: 10px !important;
+                margin: 0 0 clamp(14px, 1.4vw, 22px) !important;
+                padding: clamp(12px, 1.2vw, 18px) 0 !important;
+            }
+
+            .detail-facts-grid > .detail-fact {
+                padding: 7px 0 !important;
+            }
+
+            .detail-fact {
+                grid-template-columns: minmax(48px, auto) minmax(0, 1fr);
+                gap: 12px;
+            }
+
+            .detail-fact > span {
+                font-size: clamp(0.62rem, 0.7vw, 0.76rem) !important;
+            }
+
+            .detail-fact > b {
+                font-size: clamp(0.6rem, 0.68vw, 0.76rem) !important;
+                line-height: 1.45 !important;
+            }
+
+            .detail-content-sections {
+                flex: 1 1 auto !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: clamp(10px, 1vw, 16px) !important;
+                min-height: 0 !important;
+                overflow: hidden !important;
+            }
+
+            .detail-history-section {
+                flex: 0 0 auto !important;
+                margin: 0 !important;
+                padding: 0 0 clamp(12px, 1.2vw, 20px) !important;
+            }
+
+            .detail-history-section h4 {
+                margin: 0 0 10px !important;
+                font-size: clamp(0.88rem, 1vw, 1.08rem) !important;
+            }
+
+            #detail-desc {
+                display: -webkit-box !important;
+                overflow: hidden !important;
+                -webkit-box-orient: vertical;
+                -webkit-line-clamp: 3;
+                font-size: clamp(0.68rem, 0.76vw, 0.84rem) !important;
+                line-height: 1.72 !important;
+            }
+
+            .detail-ai-section {
+                flex: 0 0 auto !important;
+                min-height: 0 !important;
+            }
+
+            .detail-ai-heading-row {
+                margin-bottom: 10px !important;
+                padding-right: 38px !important;
+            }
+
+            .detail-ai-heading-row h4 {
+                margin: 0 0 6px !important;
+                font-size: clamp(0.88rem, 1vw, 1.08rem) !important;
+            }
+
+            .detail-ai-subtitle {
+                font-size: clamp(0.58rem, 0.66vw, 0.74rem) !important;
+                line-height: 1.45 !important;
+            }
+
+            .detail-tts-row {
+                min-height: 0 !important;
+                margin-bottom: 0 !important;
+            }
+
+            .detail-tts-row:has(#ai-tts-btn.hidden) {
+                display: none !important;
+            }
+
+            #ai-story-box,
+            #ai-chat-reply {
+                max-height: 84px !important;
+                margin-bottom: 10px !important;
+                padding: 12px 14px !important;
+                font-size: clamp(0.6rem, 0.68vw, 0.76rem) !important;
+                line-height: 1.6 !important;
+            }
+
+            #ai-chat-box {
+                min-height: 48px !important;
+                padding: 3px 6px 3px 16px !important;
+            }
+
+            #ai-chat-input {
+                padding: 8px 6px !important;
+                font-size: clamp(0.64rem, 0.72vw, 0.82rem) !important;
+            }
+
+            #ai-chat-send {
+                width: 38px !important;
+                height: 38px !important;
+            }
+
+            .detail-action-grid {
+                flex: 0 0 auto !important;
+                margin-top: clamp(12px, 1.2vw, 18px) !important;
+                padding-top: clamp(12px, 1.2vw, 18px) !important;
+                border-top: 1px solid rgba(202, 177, 132, 0.18) !important;
+            }
+
+            .detail-glass-action {
+                gap: 12px !important;
+                min-height: clamp(66px, 5.4vw, 82px) !important;
+                padding: 12px 16px !important;
+            }
+
+            .detail-glass-action > i {
+                font-size: clamp(1.35rem, 1.6vw, 1.7rem) !important;
+            }
+
+            .detail-glass-action b {
+                font-size: clamp(0.88rem, 1.04vw, 1.1rem) !important;
+            }
+        }
+
         @media (max-width: 767px) {
             .detail-panel-scroll {
                 padding: 34px 24px 46px !important;
@@ -4179,6 +4352,120 @@
                 opacity: 0.9;
             }
         }
+
+        /* 手机端首页安全区：让按钮始终在面具前方，面具只占据下方舞台。 */
+        @media (max-width: 900px) {
+            #landing-screen:not(.hidden) {
+                grid-template-rows: auto minmax(210px, 34vh);
+                align-content: center;
+                padding-top: max(1rem, env(safe-area-inset-top));
+                padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+                overflow-y: auto;
+            }
+
+            #landing-screen > .relative.z-10 {
+                position: relative;
+                z-index: 32 !important;
+                width: min(100%, 28rem);
+                justify-self: center;
+            }
+
+            #landing-screen > .relative.z-10 > .animate-reveal:last-child {
+                position: relative;
+                z-index: 36;
+                margin-bottom: 0.4rem !important;
+                isolation: isolate;
+            }
+
+            #landing-desc + div {
+                position: relative;
+                z-index: 34;
+                max-width: min(88vw, 22rem);
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            #landing-desc + div span {
+                max-width: min(76vw, 18rem);
+                line-height: 1.45;
+            }
+
+            #enter-exhibition-btn,
+            #landing-camera-btn {
+                position: relative;
+                z-index: 38;
+            }
+
+            .hero-mask-stage {
+                z-index: 4;
+                align-self: start;
+                width: min(100%, 30rem);
+                height: min(34vh, 270px);
+                min-height: 210px;
+                margin-top: 0.15rem;
+                transform: none;
+            }
+
+            .hero-mask-img {
+                bottom: 8% !important;
+                width: min(48vw, 210px) !important;
+                max-height: min(30vh, 230px) !important;
+                pointer-events: none;
+            }
+
+            @keyframes curatedHeroCanvasFloatMobile {
+                0%, 100% { transform: translateY(-4%) rotate(-0.2deg) scale(var(--hero-visual-scale, 1)); }
+                50% { transform: translateY(calc(-4% - 6px)) rotate(0.2deg) scale(var(--hero-visual-scale, 1)); }
+            }
+
+            #hero-three-container {
+                z-index: 4;
+                transform: translateY(-4%) scale(var(--hero-visual-scale, 1)) !important;
+                pointer-events: none;
+            }
+        }
+
+        @media (max-width: 420px) {
+            #landing-screen:not(.hidden) {
+                grid-template-rows: auto minmax(190px, 30vh);
+                padding-left: 0.85rem;
+                padding-right: 0.85rem;
+            }
+
+            #landing-main-title {
+                font-size: clamp(2.8rem, 16vw, 3.6rem) !important;
+            }
+
+            #landing-sub-title {
+                font-size: 0.82rem !important;
+            }
+
+            #landing-desc {
+                font-size: 0.72rem !important;
+                line-height: 1.55 !important;
+            }
+
+            .hero-mask-stage {
+                height: min(30vh, 230px);
+                min-height: 190px;
+            }
+        }
+
+        @media (max-height: 700px) and (max-width: 900px) {
+            #landing-desc + div {
+                margin-bottom: 0.35rem !important;
+            }
+
+            #landing-desc + div span {
+                font-size: 0.6rem !important;
+                line-height: 1.35;
+            }
+
+            .hero-mask-stage {
+                height: min(29vh, 220px);
+                min-height: 180px;
+            }
+        }
     </style>
 </head>
 <body class="relative min-h-screen flex flex-col justify-between">
@@ -4495,7 +4782,7 @@
                                     <span class="font-bold tracking-widest text-[10px] md:text-[12px] whitespace-nowrap">生成深度解读</span>
                                 </button>
                             </div>
-                            <div class="flex gap-2 md:gap-3 mb-3 md:mb-4">
+                            <div class="detail-tts-row flex gap-2 md:gap-3 mb-3 md:mb-4">
                                 <button id="ai-tts-btn" class="hidden interactive-element flex-[0.7] group bg-emerald-950/40 hover:bg-emerald-900 text-emerald-400 py-2 px-2 md:py-3 md:px-4 rounded-xl flex items-center justify-center gap-1 md:gap-2 transition-all border border-emerald-800/50 hover:border-emerald-500 shadow-lg">
                                     <i class="fa-solid fa-headphones text-[10px] md:text-sm"></i>
                                     <span class="font-bold tracking-widest text-[10px] md:text-[12px] whitespace-nowrap">播放语音</span>

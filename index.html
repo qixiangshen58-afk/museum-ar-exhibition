@@ -10,7 +10,8 @@
     <meta name="description" content="上古遗音：贺州文化博物馆傩戏木雕面具数字化互动展，支持 3D 鉴赏、AI 导览、AR 试戴与留影分享。">
     <meta name="theme-color" content="#050507">
     <script>
-        if (/^#postcard=[A-Za-z0-9._~-]+$/.test(location.hash)) {
+        const postcardQueryRef = new URLSearchParams(location.search).get('postcard') || '';
+        if (/^[A-Za-z0-9._~-]+$/.test(postcardQueryRef) || /^#postcard=[A-Za-z0-9._~-]+$/.test(location.hash)) {
             document.documentElement.classList.add('shared-postcard-boot');
         }
     </script>
@@ -66,12 +67,30 @@
             visibility: visible;
         }
 
-        html.shared-postcard-active body > *:not(#postcard-modal) {
+        html.shared-postcard-active body > *:not(#postcard-modal):not(#mobile-save-overlay) {
             display: none !important;
         }
 
-        html.shared-postcard-active #postcard-modal {
+        html.shared-postcard-active #postcard-modal,
+        html.shared-postcard-active #mobile-save-overlay {
             visibility: visible !important;
+        }
+
+        #mobile-save-overlay {
+            background: rgba(2, 3, 4, 0.96);
+            overscroll-behavior: contain;
+        }
+
+        #mobile-save-image {
+            display: block;
+            width: auto;
+            max-width: min(94vw, 760px);
+            max-height: 72vh;
+            object-fit: contain;
+            border: 1px solid rgba(217, 184, 115, 0.4);
+            box-shadow: 0 18px 56px rgba(0, 0, 0, 0.72);
+            -webkit-touch-callout: default;
+            user-select: auto;
         }
 
         button, input, select, textarea, .interactive-element {
@@ -5016,6 +5035,19 @@
         </div>
     </div>
 
+    <!-- 微信与受限移动浏览器：长按高清图保存到系统相册 -->
+    <div id="mobile-save-overlay" class="hidden fixed inset-0 z-[10000] overflow-y-auto p-4 flex flex-col items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="mobile-save-title">
+        <button id="close-mobile-save-btn" type="button" class="absolute top-4 right-4 z-10 w-11 h-11 rounded-full border border-amber-200/30 bg-black/70 text-amber-100 flex items-center justify-center" aria-label="关闭保存图片界面">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="w-full flex flex-col items-center gap-3 text-center">
+            <h2 id="mobile-save-title" class="text-lg text-amber-100 font-bold tracking-[0.16em]">长按保存高清纪念卡</h2>
+            <p class="text-xs text-stone-400 leading-6">长按下方图片，选择“保存图片”或“保存到相册”</p>
+            <img id="mobile-save-image" src="" alt="可长按保存的高清电子纪念卡">
+            <p class="text-[10px] text-emerald-400/80 tracking-wider">若没有保存选项，请点击右上角在系统浏览器中打开</p>
+        </div>
+    </div>
+
     <!-- 展厅全局配置模态框 -->
     <div id="config-modal" class="hidden fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 md:p-4">
         <div class="bg-stone-900 border-2 border-purple-500/50 p-4 md:p-6 rounded-2xl max-w-5xl w-[95%] md:w-full shadow-[0_0_40px_rgba(168,85,247,0.15)] flex flex-col max-h-[90vh]">
@@ -8335,7 +8367,8 @@
                 const base = new URL(location.href);
                 base.search = '';
                 base.hash = '';
-                return `${base.href}#postcard=${encodePostcardReference(manifestUrl)}`;
+                base.searchParams.set('postcard', encodePostcardReference(manifestUrl));
+                return base.href;
             }
 
             function isTrustedPostcardStorageUrl(value) {
@@ -8934,10 +8967,14 @@
             }
 
             async function openSharedPostcardFromHash() {
-                const match = location.hash.match(/^#postcard=([A-Za-z0-9._~-]+)$/);
-                if (!match) return false;
+                const queryReference = new URLSearchParams(location.search).get('postcard') || '';
+                const hashMatch = location.hash.match(/^#postcard=([A-Za-z0-9._~-]+)$/);
+                const postcardReference = /^[A-Za-z0-9._~-]+$/.test(queryReference)
+                    ? queryReference
+                    : hashMatch?.[1] || '';
+                if (!postcardReference) return false;
                 try {
-                    const manifestUrl = decodePostcardReference(match[1]);
+                    const manifestUrl = decodePostcardReference(postcardReference);
                     if (!isTrustedPostcardStorageUrl(manifestUrl)) throw new Error('明信片地址不可信');
                     const response = await fetch(manifestUrl, { credentials: 'omit', cache: 'no-store' });
                     if (!response.ok) throw new Error(`明信片已失效 (${response.status})`);
@@ -9077,6 +9114,47 @@
                 }
             });
 
+            let mobileSaveObjectUrl = null;
+
+            function isMobileBrowser() {
+                return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1;
+            }
+
+            function isWechatBrowser() {
+                return /MicroMessenger/i.test(navigator.userAgent);
+            }
+
+            function closeMobileSaveOverlay() {
+                document.getElementById('mobile-save-overlay').classList.add('hidden');
+                document.getElementById('mobile-save-image').removeAttribute('src');
+                if (mobileSaveObjectUrl) {
+                    URL.revokeObjectURL(mobileSaveObjectUrl);
+                    mobileSaveObjectUrl = null;
+                }
+            }
+
+            function showMobileSaveOverlay(blob) {
+                closeMobileSaveOverlay();
+                mobileSaveObjectUrl = URL.createObjectURL(blob);
+                document.getElementById('mobile-save-image').src = mobileSaveObjectUrl;
+                document.getElementById('mobile-save-overlay').classList.remove('hidden');
+            }
+
+            document.getElementById('close-mobile-save-btn').addEventListener('click', closeMobileSaveOverlay);
+
+            async function getPostcardDownloadBlob() {
+                if (isSharedPostcardViewerMode && currentPostcardCardUrl) {
+                    const response = await fetch(currentPostcardCardUrl, { credentials: 'omit', cache: 'no-store' });
+                    if (!response.ok) throw new Error('高清纪念卡已失效');
+                    return response.blob();
+                }
+                if (currentPostcardUploadPromise) await currentPostcardUploadPromise;
+                const canvas = await composePostcardCanvas(true);
+                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+                if (!blob) throw new Error('高清纪念卡生成失败');
+                return blob;
+            }
+
             // ✨ 高清 Canvas 合成引擎
             document.getElementById('download-postcard-btn').addEventListener('click', async () => {
                 soundSynth.playClick();
@@ -9085,29 +9163,38 @@
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 正在生成横版高清纪念卡...';
                 
                 try {
-                    if (isSharedPostcardViewerMode && currentPostcardCardUrl) {
-                        const response = await fetch(currentPostcardCardUrl, { credentials: 'omit' });
-                        if (!response.ok) throw new Error('高清纪念卡已失效');
-                        const blob = await response.blob();
-                        const objectUrl = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = objectUrl;
-                        a.download = `上古遗音_${currentMaskObj.name}_电子明信片.jpg`;
-                        a.click();
-                        setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-                        showToast('横版高清纪念卡已保存', 'success');
+                    const blob = await getPostcardDownloadBlob();
+                    const safeName = String(currentMaskObj?.name || '傩戏木雕面具').replace(/[\\/:*?"<>|]/g, '_').slice(0, 48);
+                    const filename = `上古遗音_${safeName}_电子纪念卡.jpg`;
+                    const file = typeof File === 'function' ? new File([blob], filename, { type: blob.type || 'image/jpeg' }) : null;
+
+                    if (isMobileBrowser()) {
+                        const canShareFile = Boolean(
+                            !isWechatBrowser() &&
+                            file &&
+                            typeof navigator.share === 'function' &&
+                            typeof navigator.canShare === 'function' &&
+                            navigator.canShare({ files: [file] })
+                        );
+                        if (canShareFile) {
+                            await navigator.share({ title: filename, files: [file] });
+                            showToast('请在系统面板选择“保存图像”或图库应用', 'success');
+                        } else {
+                            showMobileSaveOverlay(blob);
+                            showToast('请长按高清纪念卡保存到相册', 'success');
+                        }
                         return;
                     }
-                    if (currentPostcardUploadPromise) await currentPostcardUploadPromise;
-                    const canvas = await composePostcardCanvas(true);
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+
+                    const objectUrl = URL.createObjectURL(blob);
                     const a = document.createElement('a');
-                    a.href = dataUrl;
-                    a.download = `上古遗音_${currentMaskObj.name}_时空留影_${Date.now()}.jpg`;
+                    a.href = objectUrl;
+                    a.download = filename;
                     a.click();
-                    
+                    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
                     showToast('横版高清纪念卡已保存到设备', 'success');
                 } catch(e) {
+                    if (e?.name === 'AbortError') return;
                     console.error("明信片合成出现严重异常:", e);
                     showToast("明信片合成出现异常", "error");
                 } finally {

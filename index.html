@@ -9,6 +9,11 @@
     <title>上古遗音 - 傩戏木雕面具智能交互大展</title>
     <meta name="description" content="上古遗音：贺州文化博物馆傩戏木雕面具数字化互动展，支持 3D 鉴赏、AI 导览、AR 试戴与留影分享。">
     <meta name="theme-color" content="#050507">
+    <script>
+        if (/^#postcard=[A-Za-z0-9_-]+$/.test(location.hash)) {
+            document.documentElement.classList.add('shared-postcard-boot');
+        }
+    </script>
     <link rel="icon" href="./images/demo-mask.svg" type="image/svg+xml">
     <meta property="og:title" content="上古遗音 - 傩戏木雕面具智能交互大展">
     <meta property="og:description" content="以数字技术重访贺州傩戏木雕面具，体验 3D 文物鉴赏、AI 导览与 AR 全息试戴。">
@@ -41,6 +46,32 @@
             overscroll-behavior-y: auto; 
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
+        }
+
+        html.shared-postcard-boot body > * {
+            visibility: hidden !important;
+        }
+
+        html.shared-postcard-boot body::before {
+            content: '正在开启电子纪念卡...';
+            position: fixed;
+            inset: 0;
+            z-index: 100000;
+            display: grid;
+            place-items: center;
+            background: #050507;
+            color: rgba(217, 184, 115, 0.88);
+            font-size: 14px;
+            letter-spacing: 0.18em;
+            visibility: visible;
+        }
+
+        html.shared-postcard-active body > *:not(#postcard-modal) {
+            display: none !important;
+        }
+
+        html.shared-postcard-active #postcard-modal {
+            visibility: visible !important;
         }
 
         button, input, select, textarea, .interactive-element {
@@ -8232,6 +8263,7 @@
             let currentPostcardShareUrl = null;
             let currentPostcardViewerUrl = null;
             let currentPostcardCardUrl = null;
+            let currentPostcardShareFile = null;
             let currentSharedPostcardManifest = null;
             let currentPostcardUploadPromise = null;
             let postcardPreviewObjectUrl = null;
@@ -8327,6 +8359,21 @@
                 const copied = document.execCommand('copy');
                 input.remove();
                 if (!copied) throw new Error('浏览器不允许复制分享链接');
+            }
+
+            async function preparePostcardShareFile(cardUrl, maskName, generationId) {
+                currentPostcardShareFile = null;
+                if (!cardUrl || typeof File !== 'function') return null;
+                const response = await fetch(cardUrl, { credentials: 'omit', cache: 'no-store' });
+                if (!response.ok) throw new Error('纪念卡图片读取失败');
+                const blob = await response.blob();
+                if (generationId !== postcardGenerationId) return null;
+                const safeName = String(maskName || '傩戏木雕面具').replace(/[\\/:*?"<>|]/g, '_').slice(0, 48);
+                currentPostcardShareFile = new File([blob], `上古遗音_${safeName}_电子纪念卡.jpg`, {
+                    type: blob.type || 'image/jpeg',
+                    lastModified: Date.now()
+                });
+                return currentPostcardShareFile;
             }
 
             function showPostcardQrLoading() {
@@ -8812,6 +8859,7 @@
                 currentPostcardShareUrl = null;
                 currentPostcardViewerUrl = null;
                 currentPostcardCardUrl = null;
+                currentPostcardShareFile = null;
                 document.getElementById('postcard-modal-shell').classList.remove('postcard-viewer-mode');
                 revokePostcardPreviewUrl();
                 disposePostcard3D();
@@ -8860,6 +8908,11 @@
                                     : '手机扫码打开横版电子明信片 · 链接有效期 7 天',
                             'success'
                         );
+                        try {
+                            await preparePostcardShareFile(shareResult.cardUrl, currentMaskObj?.name, generationId);
+                        } catch (error) {
+                            console.warn('纪念卡文件预读取失败，将使用图片直达链接分享。', error);
+                        }
                         setPostcardShareButtonState('ready');
                         showToast('横版电子明信片已生成，可使用手机扫码保存', 'success');
                         return shareResult.shareUrl;
@@ -8897,6 +8950,7 @@
                     currentPostcardShareUrl = location.href;
                     currentPostcardViewerUrl = location.href;
                     currentPostcardCardUrl = manifest.cardUrl;
+                    currentPostcardShareFile = null;
                     currentPostcardUploadPromise = null;
                     currentMaskObj = {
                         name: String(artifact.name || '未命名藏品').slice(0, 80),
@@ -8928,15 +8982,35 @@
                     document.getElementById('postcard-desc').innerText = currentMaskObj.description;
                     document.getElementById('postcard-qrcode').innerHTML = '';
                     setPostcardShareStatus('动态电子明信片 · 私密链接有效期 7 天', 'success');
-                    setPostcardShareButtonState('ready');
+                    setPostcardShareButtonState('loading');
                     postcardModal.classList.remove('hidden');
+                    document.documentElement.classList.remove('shared-postcard-boot');
+                    document.documentElement.classList.add('shared-postcard-active');
                     setTimeout(() => {
                         postcardModal.classList.remove('opacity-0', 'scale-95');
                         loadPostcardArtifact3D(currentMaskObj, generationId);
                     }, 50);
+                    preparePostcardShareFile(manifest.cardUrl, currentMaskObj.name, generationId)
+                        .catch((error) => console.warn('共享纪念卡图片预读取失败，将使用图片直达链接。', error))
+                        .finally(() => {
+                            if (generationId === postcardGenerationId) setPostcardShareButtonState('ready');
+                        });
                     return true;
                 } catch (error) {
                     console.warn('电子明信片打开失败:', error);
+                    document.documentElement.classList.remove('shared-postcard-boot');
+                    document.documentElement.classList.add('shared-postcard-active');
+                    isSharedPostcardViewerMode = true;
+                    document.getElementById('postcard-modal-shell').classList.add('postcard-viewer-mode');
+                    document.getElementById('postcard-photo').src = fallbackSVG;
+                    document.getElementById('postcard-mask-img').src = fallbackSVG;
+                    document.getElementById('postcard-title').innerText = '电子纪念卡已失效';
+                    document.getElementById('postcard-subtitle').innerText = '链接无效或已超过 7 天';
+                    document.getElementById('postcard-desc').innerText = '请联系分享者重新生成电子纪念卡。';
+                    document.getElementById('postcard-qrcode').innerHTML = '';
+                    setPostcardShareStatus(error.message || '电子明信片无法打开', 'error');
+                    setPostcardShareButtonState('unavailable');
+                    postcardModal.classList.remove('hidden', 'opacity-0', 'scale-95');
                     showToast(error.message || '电子明信片无法打开', 'error');
                     return false;
                 }
@@ -8954,8 +9028,11 @@
                 postcardModal.classList.add('opacity-0', 'scale-95');
                 setTimeout(() => { postcardModal.classList.add('hidden'); }, 500);
                 if (wasSharedViewer) {
-                    history.replaceState(null, '', `${location.pathname}${location.search}`);
-                    hydrateHeroMask();
+                    setTimeout(() => {
+                        if (history.length > 1) history.back();
+                        else location.replace('about:blank');
+                    }, 120);
+                    return;
                 } else if (isARMode && cameraActive) {
                     startARRenderLoop();
                 } else if (!detailView.classList.contains('hidden') && currentModel) {
@@ -8967,33 +9044,43 @@
             document.getElementById('share-postcard-btn').addEventListener('click', async () => {
                 soundSynth.playClick();
                 const button = document.getElementById('share-postcard-btn');
-                const shareUrl = currentPostcardShareUrl || document.getElementById('postcard-qrcode')?.dataset.shareUrl || '';
-                if (!shareUrl || button.dataset.shareState !== 'ready') {
+                const viewerUrl = currentPostcardShareUrl || document.getElementById('postcard-qrcode')?.dataset.shareUrl || '';
+                const imageUrl = currentPostcardCardUrl || document.getElementById('postcard-qrcode')?.dataset.cardUrl || '';
+                if ((!imageUrl && !viewerUrl) || button.dataset.shareState !== 'ready') {
                     showToast('电子明信片链接仍在生成，请稍后再试', 'error');
                     return;
                 }
 
                 const maskName = currentMaskObj?.name || '傩戏木雕面具';
-                const shareData = {
-                    title: `《上古遗音》${maskName}数字纪念卡`,
-                    text: `我在《上古遗音》数字特展中生成了一张 ${maskName} 电子纪念卡，链接有效期 7 天。`,
-                    url: shareUrl
-                };
+                const title = `《上古遗音》${maskName}数字纪念卡`;
+                const text = `我在《上古遗音》数字特展中生成了一张 ${maskName} 电子纪念卡。`;
 
                 try {
-                    if (typeof navigator.share === 'function') {
-                        await navigator.share(shareData);
+                    const fileShareData = currentPostcardShareFile
+                        ? { title, text, files: [currentPostcardShareFile] }
+                        : null;
+                    const canShareFile = Boolean(
+                        fileShareData &&
+                        typeof navigator.share === 'function' &&
+                        typeof navigator.canShare === 'function' &&
+                        navigator.canShare({ files: [currentPostcardShareFile] })
+                    );
+                    if (canShareFile) {
+                        await navigator.share(fileShareData);
+                        showToast('电子纪念卡图片已分享', 'success');
+                    } else if (typeof navigator.share === 'function') {
+                        await navigator.share({ title, text, url: imageUrl || viewerUrl });
                         showToast('电子纪念卡已分享', 'success');
                     } else {
-                        await copyPostcardShareUrl(shareUrl);
-                        showToast('分享链接已复制，可发送给好友', 'success');
+                        await copyPostcardShareUrl(imageUrl || viewerUrl);
+                        showToast('纪念卡图片链接已复制，可发送给好友', 'success');
                     }
                 } catch (error) {
                     if (error?.name === 'AbortError') return;
                     console.warn('系统分享失败，尝试复制链接。', error);
                     try {
-                        await copyPostcardShareUrl(shareUrl);
-                        showToast('分享链接已复制，可发送给好友', 'success');
+                        await copyPostcardShareUrl(imageUrl || viewerUrl);
+                        showToast('纪念卡图片链接已复制，可发送给好友', 'success');
                     } catch (copyError) {
                         console.error('电子明信片分享失败:', copyError);
                         showToast('分享失败，请使用二维码或保存纪念卡', 'error');

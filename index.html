@@ -10,7 +10,7 @@
     <meta name="description" content="上古遗音：贺州文化博物馆傩戏木雕面具数字化互动展，支持 3D 鉴赏、AI 导览、AR 试戴与留影分享。">
     <meta name="theme-color" content="#050507">
     <script>
-        if (/^#postcard=[A-Za-z0-9_-]+$/.test(location.hash)) {
+        if (/^#postcard=[A-Za-z0-9._~-]+$/.test(location.hash)) {
             document.documentElement.classList.add('shared-postcard-boot');
         }
     </script>
@@ -8263,7 +8263,6 @@
             let currentPostcardShareUrl = null;
             let currentPostcardViewerUrl = null;
             let currentPostcardCardUrl = null;
-            let currentPostcardShareFile = null;
             let currentSharedPostcardManifest = null;
             let currentPostcardUploadPromise = null;
             let postcardPreviewObjectUrl = null;
@@ -8291,18 +8290,45 @@
                 }
             }
 
-            function encodePostcardReference(value) {
+            function encodeBase64UrlText(value) {
                 const bytes = new TextEncoder().encode(value);
                 let binary = '';
                 bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
                 return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
             }
 
-            function decodePostcardReference(value) {
+            function decodeBase64UrlText(value) {
                 const base64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
                 const binary = atob(base64);
                 const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
                 return new TextDecoder().decode(bytes);
+            }
+
+            function encodePostcardReference(value) {
+                try {
+                    const url = new URL(value);
+                    const storageOrigin = new URL(SUPABASE_URL).origin;
+                    const signedPrefix = `/storage/v1/object/sign/${POSTCARD_BUCKET}/`;
+                    const token = url.searchParams.get('token');
+                    if (url.origin === storageOrigin && url.pathname.startsWith(signedPrefix) && token) {
+                        const objectPath = decodeURIComponent(url.pathname.slice(signedPrefix.length));
+                        return `v2~${encodeBase64UrlText(objectPath)}~${token}`;
+                    }
+                } catch (_) {}
+                return encodeBase64UrlText(value);
+            }
+
+            function decodePostcardReference(value) {
+                if (value.startsWith('v2~')) {
+                    const separatorIndex = value.indexOf('~', 3);
+                    if (separatorIndex < 0) throw new Error('明信片短链接格式无效');
+                    const objectPath = decodeBase64UrlText(value.slice(3, separatorIndex));
+                    const token = value.slice(separatorIndex + 1);
+                    if (!objectPath || !token || objectPath.includes('..')) throw new Error('明信片短链接不完整');
+                    const encodedPath = objectPath.split('/').map(encodeURIComponent).join('/');
+                    return `${SUPABASE_URL}/storage/v1/object/sign/${POSTCARD_BUCKET}/${encodedPath}?token=${encodeURIComponent(token)}`;
+                }
+                return decodeBase64UrlText(value);
             }
 
             function buildPostcardViewerUrl(manifestUrl) {
@@ -8359,21 +8385,6 @@
                 const copied = document.execCommand('copy');
                 input.remove();
                 if (!copied) throw new Error('浏览器不允许复制分享链接');
-            }
-
-            async function preparePostcardShareFile(cardUrl, maskName, generationId) {
-                currentPostcardShareFile = null;
-                if (!cardUrl || typeof File !== 'function') return null;
-                const response = await fetch(cardUrl, { credentials: 'omit', cache: 'no-store' });
-                if (!response.ok) throw new Error('纪念卡图片读取失败');
-                const blob = await response.blob();
-                if (generationId !== postcardGenerationId) return null;
-                const safeName = String(maskName || '傩戏木雕面具').replace(/[\\/:*?"<>|]/g, '_').slice(0, 48);
-                currentPostcardShareFile = new File([blob], `上古遗音_${safeName}_电子纪念卡.jpg`, {
-                    type: blob.type || 'image/jpeg',
-                    lastModified: Date.now()
-                });
-                return currentPostcardShareFile;
             }
 
             function showPostcardQrLoading() {
@@ -8859,7 +8870,6 @@
                 currentPostcardShareUrl = null;
                 currentPostcardViewerUrl = null;
                 currentPostcardCardUrl = null;
-                currentPostcardShareFile = null;
                 document.getElementById('postcard-modal-shell').classList.remove('postcard-viewer-mode');
                 revokePostcardPreviewUrl();
                 disposePostcard3D();
@@ -8908,11 +8918,6 @@
                                     : '手机扫码打开横版电子明信片 · 链接有效期 7 天',
                             'success'
                         );
-                        try {
-                            await preparePostcardShareFile(shareResult.cardUrl, currentMaskObj?.name, generationId);
-                        } catch (error) {
-                            console.warn('纪念卡文件预读取失败，将使用图片直达链接分享。', error);
-                        }
                         setPostcardShareButtonState('ready');
                         showToast('横版电子明信片已生成，可使用手机扫码保存', 'success');
                         return shareResult.shareUrl;
@@ -8929,7 +8934,7 @@
             }
 
             async function openSharedPostcardFromHash() {
-                const match = location.hash.match(/^#postcard=([A-Za-z0-9_-]+)$/);
+                const match = location.hash.match(/^#postcard=([A-Za-z0-9._~-]+)$/);
                 if (!match) return false;
                 try {
                     const manifestUrl = decodePostcardReference(match[1]);
@@ -8950,7 +8955,6 @@
                     currentPostcardShareUrl = location.href;
                     currentPostcardViewerUrl = location.href;
                     currentPostcardCardUrl = manifest.cardUrl;
-                    currentPostcardShareFile = null;
                     currentPostcardUploadPromise = null;
                     currentMaskObj = {
                         name: String(artifact.name || '未命名藏品').slice(0, 80),
@@ -8990,11 +8994,7 @@
                         postcardModal.classList.remove('opacity-0', 'scale-95');
                         loadPostcardArtifact3D(currentMaskObj, generationId);
                     }, 50);
-                    preparePostcardShareFile(manifest.cardUrl, currentMaskObj.name, generationId)
-                        .catch((error) => console.warn('共享纪念卡图片预读取失败，将使用图片直达链接。', error))
-                        .finally(() => {
-                            if (generationId === postcardGenerationId) setPostcardShareButtonState('ready');
-                        });
+                    setPostcardShareButtonState('ready');
                     return true;
                 } catch (error) {
                     console.warn('电子明信片打开失败:', error);
@@ -9044,43 +9044,32 @@
             document.getElementById('share-postcard-btn').addEventListener('click', async () => {
                 soundSynth.playClick();
                 const button = document.getElementById('share-postcard-btn');
-                const viewerUrl = currentPostcardShareUrl || document.getElementById('postcard-qrcode')?.dataset.shareUrl || '';
+                const viewerUrl = currentPostcardShareUrl || document.getElementById('postcard-qrcode')?.dataset.shareUrl || currentPostcardViewerUrl || '';
                 const imageUrl = currentPostcardCardUrl || document.getElementById('postcard-qrcode')?.dataset.cardUrl || '';
-                if ((!imageUrl && !viewerUrl) || button.dataset.shareState !== 'ready') {
+                const shareTargetUrl = viewerUrl || imageUrl;
+                if (!shareTargetUrl || button.dataset.shareState !== 'ready') {
                     showToast('电子明信片链接仍在生成，请稍后再试', 'error');
                     return;
                 }
 
                 const maskName = currentMaskObj?.name || '傩戏木雕面具';
                 const title = `《上古遗音》${maskName}数字纪念卡`;
-                const text = `我在《上古遗音》数字特展中生成了一张 ${maskName} 电子纪念卡。`;
+                const text = `我在《上古遗音》数字特展中生成了一张 ${maskName} 电子纪念卡。\n点击打开电子纪念卡：${shareTargetUrl}`;
 
                 try {
-                    const fileShareData = currentPostcardShareFile
-                        ? { title, text, files: [currentPostcardShareFile] }
-                        : null;
-                    const canShareFile = Boolean(
-                        fileShareData &&
-                        typeof navigator.share === 'function' &&
-                        typeof navigator.canShare === 'function' &&
-                        navigator.canShare({ files: [currentPostcardShareFile] })
-                    );
-                    if (canShareFile) {
-                        await navigator.share(fileShareData);
-                        showToast('电子纪念卡图片已分享', 'success');
-                    } else if (typeof navigator.share === 'function') {
-                        await navigator.share({ title, text, url: imageUrl || viewerUrl });
-                        showToast('电子纪念卡已分享', 'success');
+                    if (typeof navigator.share === 'function') {
+                        await navigator.share({ title, text, url: shareTargetUrl });
+                        showToast('动态电子纪念卡链接已分享', 'success');
                     } else {
-                        await copyPostcardShareUrl(imageUrl || viewerUrl);
-                        showToast('纪念卡图片链接已复制，可发送给好友', 'success');
+                        await copyPostcardShareUrl(shareTargetUrl);
+                        showToast('动态纪念卡链接已复制，可发送给好友', 'success');
                     }
                 } catch (error) {
                     if (error?.name === 'AbortError') return;
                     console.warn('系统分享失败，尝试复制链接。', error);
                     try {
-                        await copyPostcardShareUrl(imageUrl || viewerUrl);
-                        showToast('纪念卡图片链接已复制，可发送给好友', 'success');
+                        await copyPostcardShareUrl(shareTargetUrl);
+                        showToast('动态纪念卡链接已复制，可发送给好友', 'success');
                     } catch (copyError) {
                         console.error('电子明信片分享失败:', copyError);
                         showToast('分享失败，请使用二维码或保存纪念卡', 'error');

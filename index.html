@@ -9,6 +9,7 @@
     <title>上古遗音 - 傩戏木雕面具智能交互大展</title>
     <meta name="description" content="上古遗音：贺州文化博物馆傩戏木雕面具数字化互动展，支持 3D 鉴赏、AI 导览、AR 试戴与留影分享。">
     <meta name="theme-color" content="#050507">
+    <link rel="icon" href="./images/demo-mask.svg" type="image/svg+xml">
     <meta property="og:title" content="上古遗音 - 傩戏木雕面具智能交互大展">
     <meta property="og:description" content="以数字技术重访贺州傩戏木雕面具，体验 3D 文物鉴赏、AI 导览与 AR 全息试戴。">
     <meta property="og:type" content="website">
@@ -1129,11 +1130,38 @@
             50% { transform: translate(-50%, -50%) translateY(-7px); }
         }
 
+        .postcard-action-bar {
+            display: grid !important;
+            grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr);
+        }
+
+        #share-postcard-btn,
         #download-postcard-btn {
             border-radius: 10px !important;
+            letter-spacing: 0.12em;
+            min-width: 0;
+        }
+
+        #share-postcard-btn {
+            border: 1px solid rgba(217, 184, 115, 0.46) !important;
+            background: rgba(16, 18, 18, 0.88) !important;
+            color: rgba(242, 218, 164, 0.94) !important;
+        }
+
+        #share-postcard-btn:hover:not(:disabled) {
+            border-color: rgba(88, 215, 204, 0.72) !important;
+            color: rgba(137, 231, 221, 0.98) !important;
+            transform: translateY(-1px);
+        }
+
+        #share-postcard-btn:disabled {
+            cursor: wait;
+            opacity: 0.48;
+        }
+
+        #download-postcard-btn {
             background: linear-gradient(180deg, #f1d69a, #d9b873 52%, #9c6d2d) !important;
             color: #120d08 !important;
-            letter-spacing: 0.12em;
         }
 
         @media (max-width: 900px) {
@@ -4946,7 +4974,10 @@
                 </section>
             </div>
             
-            <div class="p-3 md:p-4 bg-stone-900 border-t border-stone-800 flex gap-3 z-20">
+            <div class="postcard-action-bar p-3 md:p-4 bg-stone-900 border-t border-stone-800 gap-2 md:gap-3 z-20">
+                <button id="share-postcard-btn" class="interactive-element py-2.5 md:py-3.5 font-bold rounded-xl text-[10px] md:text-sm transition flex items-center justify-center gap-1.5 md:gap-2" type="button" disabled aria-label="分享电子纪念卡">
+                    <i class="fa-solid fa-spinner fa-spin"></i> 链接生成中
+                </button>
                 <button id="download-postcard-btn" class="interactive-element flex-1 py-2.5 md:py-3.5 bg-amber-600 hover:bg-amber-500 text-black font-bold rounded-xl text-xs md:text-sm transition shadow-[0_5px_20px_rgba(217,119,6,0.3)] flex items-center justify-center gap-2">
                     <i class="fa-solid fa-download"></i> 保存高清纪念卡
                 </button>
@@ -5071,16 +5102,30 @@
                 </div>
             </div>
             
-            <div class="flex justify-between items-center pt-3 md:pt-4 border-t border-purple-900/50 mt-3 md:mt-4 flex-shrink-0">
-                <div class="flex gap-2">
-                    <button id="preview-landing-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-stone-800 text-stone-300 border border-stone-600 rounded-lg text-xs md:text-sm transition"><i class="fa-solid fa-eye text-purple-400"></i> 重演主页</button>
-                    <button id="system-health-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-cyan-950/70 text-cyan-300 border border-cyan-700/50 rounded-lg text-xs md:text-sm transition hover:bg-cyan-900"><i class="fa-solid fa-stethoscope text-cyan-400"></i> 系统体检</button>
-                    <button id="batch-ai-generate-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-indigo-900/60 text-indigo-300 border border-indigo-600/50 rounded-lg text-xs md:text-sm transition hover:bg-indigo-800 shadow-[0_0_15px_rgba(79,70,229,0.3)]"><i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i> AI 批量赋能</button>
-                    <button id="export-json-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-emerald-900/60 text-emerald-300 border border-emerald-600/50 rounded-lg text-xs md:text-sm transition hover:bg-emerald-800 shadow-[0_0_15px_rgba(16,185,129,0.3)]"><i class="fa-solid fa-download text-emerald-400"></i> 导出配置 (data.json)</button>
+            <div class="pt-3 md:pt-4 border-t border-purple-900/50 mt-3 md:mt-4 flex-shrink-0 space-y-2.5">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 rounded-xl border border-emerald-800/40 bg-emerald-950/15 px-3 py-2">
+                    <div class="min-w-0">
+                        <p class="text-[10px] md:text-xs font-bold text-emerald-300"><i class="fa-solid fa-database mr-1.5"></i>馆长数据闭环</p>
+                        <p id="curator-data-status" class="text-[9px] md:text-[10px] text-stone-400 mt-0.5 truncate">正在检查正式数据与本地草稿...</p>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <input id="import-json-file" type="file" accept=".json,application/json" class="hidden">
+                        <button id="backup-json-btn" type="button" class="interactive-element px-2.5 py-1.5 bg-stone-800 text-stone-300 border border-stone-700 rounded-lg text-[10px] transition hover:border-amber-600/60"><i class="fa-solid fa-box-archive text-amber-400"></i> 下载备份</button>
+                        <button id="import-json-btn" type="button" class="interactive-element px-2.5 py-1.5 bg-blue-950/70 text-blue-300 border border-blue-700/50 rounded-lg text-[10px] transition hover:bg-blue-900"><i class="fa-solid fa-file-import"></i> 导入 data.json</button>
+                        <button id="sync-online-json-btn" type="button" class="interactive-element px-2.5 py-1.5 bg-cyan-950/70 text-cyan-300 border border-cyan-700/50 rounded-lg text-[10px] transition hover:bg-cyan-900"><i class="fa-solid fa-cloud-arrow-down"></i> 同步线上正式数据</button>
+                    </div>
                 </div>
-                <div class="flex gap-2">
-                    <button id="cancel-config-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-stone-800 text-stone-300 rounded-lg text-xs md:text-sm">取消</button>
-                    <button id="save-config-btn" class="interactive-element px-4 md:px-6 py-1.5 md:py-2 bg-purple-600 text-white font-bold rounded-lg text-xs md:text-sm transition">应用</button>
+                <div class="flex flex-col md:flex-row justify-between md:items-center gap-2">
+                    <div class="flex flex-wrap gap-2">
+                        <button id="preview-landing-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-stone-800 text-stone-300 border border-stone-600 rounded-lg text-xs md:text-sm transition"><i class="fa-solid fa-eye text-purple-400"></i> 重演主页</button>
+                        <button id="system-health-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-cyan-950/70 text-cyan-300 border border-cyan-700/50 rounded-lg text-xs md:text-sm transition hover:bg-cyan-900"><i class="fa-solid fa-stethoscope text-cyan-400"></i> 系统体检</button>
+                        <button id="batch-ai-generate-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-indigo-900/60 text-indigo-300 border border-indigo-600/50 rounded-lg text-xs md:text-sm transition hover:bg-indigo-800 shadow-[0_0_15px_rgba(79,70,229,0.3)]"><i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i> AI 批量赋能</button>
+                        <button id="export-json-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-emerald-900/60 text-emerald-300 border border-emerald-600/50 rounded-lg text-xs md:text-sm transition hover:bg-emerald-800 shadow-[0_0_15px_rgba(16,185,129,0.3)]"><i class="fa-solid fa-download text-emerald-400"></i> 导出正式 data.json</button>
+                    </div>
+                    <div class="flex gap-2 self-end md:self-auto">
+                        <button id="cancel-config-btn" class="interactive-element px-3 md:px-4 py-1.5 md:py-2 bg-stone-800 text-stone-300 rounded-lg text-xs md:text-sm">取消</button>
+                        <button id="save-config-btn" class="interactive-element px-4 md:px-6 py-1.5 md:py-2 bg-purple-600 text-white font-bold rounded-lg text-xs md:text-sm transition">应用</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -7062,41 +7107,424 @@
                 window.appSubCategories = ['精选藏品', '祭仪面具', '民间守护'];
             }
 
-            async function loadExhibitionData() {
-                try {
-                    const response = await fetch('./data.json');
-                    if (!response.ok) throw new Error("Local data.json not found");
-                    const jsonData = await response.json();
+            const CURATOR_DRAFT_DB_NAME = 'shanggu-yiyin-curator-drafts';
+            const CURATOR_DRAFT_STORE_NAME = 'drafts';
+            const CURATOR_DRAFT_RECORD_ID = 'current-exhibition';
+            const CURATOR_SCHEMA_VERSION = 2;
+            const PUBLIC_DATA_URL = 'https://qixiangshen58-afk.github.io/museum-ar-exhibition/data.json';
+            let curatorDraftDbPromise = null;
+            let curatorSourceSignature = '';
+            let curatorLastDraftSignature = '';
+            let curatorDraftAutosaveTimer = null;
+            let curatorBaselineCount = 0;
+            let curatorDraftWarningShown = false;
+            let curatorDataOrigin = 'data.json';
+            let curatorLastDraftSavedAt = 0;
+            let curatorLastOfficialLoadAt = 0;
 
-                    if (jsonData.siteConfig) {
-                        if (jsonData.siteConfig.tag) document.getElementById('display-tag').innerText = jsonData.siteConfig.tag;
-                        if (jsonData.siteConfig.mainTitle) document.getElementById('landing-main-title').innerText = jsonData.siteConfig.mainTitle;
-                        if (jsonData.siteConfig.subTitle) document.getElementById('landing-sub-title').innerText = jsonData.siteConfig.subTitle;
-                        if (jsonData.siteConfig.description) document.getElementById('landing-desc').innerHTML = textToLineBreakHTML(jsonData.siteConfig.description);
-                        if (jsonData.siteConfig.heroImage) heroImageUrl = normalizeConfigImageUrl(jsonData.siteConfig.heroImage);
-                        if (jsonData.siteConfig.heroObjUrl) heroObjUrl = normalizeConfigAssetUrl(jsonData.siteConfig.heroObjUrl);
-                        if (jsonData.siteConfig.heroMtlUrl) heroMtlUrl = normalizeConfigAssetUrl(jsonData.siteConfig.heroMtlUrl);
-                        if (jsonData.siteConfig.heroTextureUrl) heroTextureUrl = normalizeConfigImageUrl(jsonData.siteConfig.heroTextureUrl);
-                        heroModelFormat = detect3DModelFormat(heroObjUrl, jsonData.siteConfig.heroModelFormat || '');
-                        if (jsonData.siteConfig.heroScale) heroVisualScale = Math.min(1.5, Math.max(0.6, Number(jsonData.siteConfig.heroScale) || 1));
-                        if (jsonData.siteConfig.footerText) {
-                            document.getElementById('footer-copyright-text').innerText = jsonData.siteConfig.footerText;
-                            document.getElementById('landing-watermark').innerText = jsonData.siteConfig.footerText;
+            function formatCuratorDateTime(timestamp) {
+                if (!timestamp) return '尚未保存';
+                return new Date(timestamp).toLocaleString('zh-CN', { hour12: false });
+            }
+
+            function updateCuratorDataStatus(extraMessage = '') {
+                const status = document.getElementById('curator-data-status');
+                if (!status) return;
+                const originLabels = {
+                    'data.json': '本地正式 data.json',
+                    'local-draft': '本地馆长草稿',
+                    'imported-json': '刚导入的 data.json',
+                    'online-sync': 'GitHub Pages 线上正式数据',
+                    'draft-recovery': '故障恢复草稿',
+                    'embedded-demo': '临时演示数据'
+                };
+                const sourceLabel = originLabels[curatorDataOrigin] || curatorDataOrigin;
+                const savedLabel = curatorLastDraftSavedAt ? `草稿 ${formatCuratorDateTime(curatorLastDraftSavedAt)}` : '草稿尚未写入';
+                status.textContent = `${sourceLabel} · ${masksData.length} 件 · ${savedLabel}${extraMessage ? ` · ${extraMessage}` : ''}`;
+                status.title = status.textContent;
+            }
+
+            function getCuratorInputValue(id, fallback = '') {
+                const element = document.getElementById(id);
+                return element && typeof element.value === 'string' ? element.value.trim() : fallback;
+            }
+
+            function getPersistentArtifactRecords() {
+                let removedTransientAssets = 0;
+                const records = masksData.map((mask) => {
+                    const record = { ...mask };
+                    ['image', 'thumbnail', 'modelUrl', 'objUrl', 'mtlUrl', 'textureUrl'].forEach((field) => {
+                        if (String(record[field] || '').startsWith('blob:')) {
+                            record[field] = '';
+                            removedTransientAssets++;
+                        }
+                    });
+                    return record;
+                });
+                return { records, removedTransientAssets };
+            }
+
+            function buildCuratorDataPackage({ preferConfigInputs = true, exportSource = 'local-curator' } = {}) {
+                const persistAssetUrl = (value) => String(value || '').startsWith('blob:') ? '' : (value || '');
+                const snapshot = collectCuratorDataSnapshot();
+                const { records, removedTransientAssets } = getPersistentArtifactRecords();
+                const siteConfig = {
+                    ...snapshot.siteConfig,
+                    tag: preferConfigInputs ? (getCuratorInputValue('cfg-landing-tag', snapshot.siteConfig.tag) || snapshot.siteConfig.tag) : snapshot.siteConfig.tag,
+                    mainTitle: preferConfigInputs ? (getCuratorInputValue('cfg-landing-title', snapshot.siteConfig.mainTitle) || snapshot.siteConfig.mainTitle) : snapshot.siteConfig.mainTitle,
+                    subTitle: preferConfigInputs ? (getCuratorInputValue('cfg-landing-sub', snapshot.siteConfig.subTitle) || snapshot.siteConfig.subTitle) : snapshot.siteConfig.subTitle,
+                    description: preferConfigInputs ? getCuratorInputValue('cfg-landing-desc', snapshot.siteConfig.description) : snapshot.siteConfig.description,
+                    headerTitle: preferConfigInputs ? (getCuratorInputValue('cfg-header-title', snapshot.siteConfig.headerTitle) || snapshot.siteConfig.headerTitle) : snapshot.siteConfig.headerTitle,
+                    footerText: preferConfigInputs ? (getCuratorInputValue('cfg-footer-text', snapshot.siteConfig.footerText) || snapshot.siteConfig.footerText) : snapshot.siteConfig.footerText,
+                    heroImage: persistAssetUrl(heroImageUrl),
+                    heroObjUrl: persistAssetUrl(heroObjUrl),
+                    heroMtlUrl: persistAssetUrl(heroMtlUrl),
+                    heroTextureUrl: persistAssetUrl(heroTextureUrl),
+                    heroModelFormat: heroModelFormat || detect3DModelFormat(heroObjUrl, ''),
+                    heroScale: heroVisualScale || 1
+                };
+                return {
+                    data: {
+                        meta: {
+                            schemaVersion: CURATOR_SCHEMA_VERSION,
+                            project: 'shanggu-yiyin',
+                            exportedAt: new Date().toISOString(),
+                            itemCount: records.length,
+                            source: exportSource
+                        },
+                        siteConfig,
+                        audioConfig: { ...bgmConfig },
+                        categories: Array.from(window.appCategories || []),
+                        subCategories: Array.from(window.appSubCategories || []),
+                        masksData: records
+                    },
+                    removedTransientAssets
+                };
+            }
+
+            function createTimestampForFilename() {
+                const date = new Date();
+                const pad = (value) => String(value).padStart(2, '0');
+                return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+            }
+
+            function downloadCuratorJson(data, filename) {
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+                const objectUrl = URL.createObjectURL(blob);
+                const anchor = document.createElement('a');
+                anchor.href = objectUrl;
+                anchor.download = filename;
+                document.body.appendChild(anchor);
+                anchor.click();
+                anchor.remove();
+                window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+            }
+
+            function validateCuratorDataPackage(input) {
+                if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('JSON 顶层必须是对象。');
+                if (!Array.isArray(input.masksData)) throw new Error('缺少 masksData 藏品数组。');
+                if (input.masksData.length > 5000) throw new Error('单次导入不得超过 5000 件藏品。');
+                const normalizedMasks = input.masksData.map((mask, index) => {
+                    if (!mask || typeof mask !== 'object' || Array.isArray(mask)) throw new Error(`第 ${index + 1} 件藏品格式无效。`);
+                    const record = { ...mask };
+                    if (record.id === undefined || record.id === null || record.id === '') record.id = `imported-${index + 1}`;
+                    if (!record.name) record.name = `未命名藏品 ${index + 1}`;
+                    return record;
+                });
+                return {
+                    ...input,
+                    siteConfig: input.siteConfig && typeof input.siteConfig === 'object' ? { ...input.siteConfig } : {},
+                    audioConfig: input.audioConfig && typeof input.audioConfig === 'object' ? { ...input.audioConfig } : undefined,
+                    categories: Array.isArray(input.categories) ? [...input.categories] : [],
+                    subCategories: Array.isArray(input.subCategories) ? [...input.subCategories] : [],
+                    masksData: normalizedMasks
+                };
+            }
+
+            function populateCuratorConfigInputs() {
+                const setValue = (id, value) => {
+                    const element = document.getElementById(id);
+                    if (element) element.value = value ?? '';
+                };
+                setValue('cfg-landing-tag', document.getElementById('display-tag')?.innerText.trim() || '');
+                setValue('cfg-landing-title', document.getElementById('landing-main-title')?.innerText.trim() || '');
+                setValue('cfg-landing-sub', document.getElementById('landing-sub-title')?.innerText.trim() || '');
+                setValue('cfg-landing-desc', document.getElementById('landing-desc')?.innerText.trim() || '');
+                setValue('cfg-header-title', document.getElementById('header-main-title')?.innerText.trim() || '');
+                setValue('cfg-footer-text', document.getElementById('footer-copyright-text')?.innerText.trim() || '');
+                setValue('cfg-hero-image', heroImageUrl);
+                setValue('cfg-hero-obj', heroObjUrl);
+                setValue('cfg-hero-mtl', heroMtlUrl);
+                setValue('cfg-hero-texture', heroTextureUrl);
+                setValue('cfg-hero-scale', Math.round((heroVisualScale || 1) * 100));
+                setValue('cfg-bgm-volume', Math.round((bgmConfig.volume || 0) * 100));
+                setValue('cfg-bgm-pitch', bgmConfig.proceduralPitch || 42);
+                const scaleValue = document.getElementById('cfg-hero-scale-value');
+                if (scaleValue) scaleValue.innerText = `${Math.round((heroVisualScale || 1) * 100)}%`;
+                const preview = document.getElementById('cfg-hero-image-preview');
+                if (preview) preview.src = safeImageUrl(heroImageUrl || (masksData[0] ? masksData[0].image : createDemoMaskImage()));
+                const modeInput = document.getElementById(bgmConfig.mode === 'custom' ? 'bgm-type-custom' : 'bgm-type-procedural');
+                if (modeInput) modeInput.checked = true;
+                document.getElementById('cfg-procedural-params')?.classList.toggle('hidden', bgmConfig.mode !== 'procedural');
+                document.getElementById('cfg-custom-params')?.classList.toggle('hidden', bgmConfig.mode === 'procedural');
+            }
+
+            async function applyCuratorDataPackage(dataPackage, origin) {
+                const validatedData = validateCuratorDataPackage(dataPackage);
+                applyExhibitionData(validatedData);
+                curatorBaselineCount = validatedData.masksData.length;
+                curatorDataOrigin = origin;
+                curatorLastDraftSignature = '';
+                updateFilterOptions();
+                renderSubCategoryTabs();
+                renderGallery();
+                renderCategorySelection();
+                populateCuratorConfigInputs();
+                applyHeroVisualScale();
+                if (!document.getElementById('landing-screen').classList.contains('hidden')) hydrateHeroMask();
+                await persistCuratorDraft({ force: true });
+                updateCuratorDataStatus('尚未发布，请导出后覆盖 GitHub data.json');
+                return validatedData;
+            }
+
+            function downloadCurrentCuratorBackup(reason = 'manual') {
+                const { data } = buildCuratorDataPackage({ preferConfigInputs: true, exportSource: `backup-${reason}` });
+                downloadCuratorJson(data, `data-backup-${createTimestampForFilename()}.json`);
+                return data;
+            }
+
+            function createCuratorDataSignature(value) {
+                const input = typeof value === 'string' ? value : JSON.stringify(value || {});
+                let hash = 2166136261;
+                for (let index = 0; index < input.length; index++) {
+                    hash ^= input.charCodeAt(index);
+                    hash = Math.imul(hash, 16777619);
+                }
+                return `v1-${(hash >>> 0).toString(16)}-${input.length}`;
+            }
+
+            function createCuratorContentSignature(data) {
+                if (!data || typeof data !== 'object') return createCuratorDataSignature({});
+                return createCuratorDataSignature({
+                    siteConfig: data.siteConfig || {},
+                    audioConfig: data.audioConfig || {},
+                    categories: data.categories || [],
+                    subCategories: data.subCategories || [],
+                    masksData: data.masksData || []
+                });
+            }
+
+            function collectCuratorDataSnapshot() {
+                const readText = (id, fallback = '') => {
+                    const element = document.getElementById(id);
+                    return element ? element.innerText.trim() : fallback;
+                };
+                const persistAssetUrl = (value) => String(value || '').startsWith('blob:') ? '' : (value || '');
+                return {
+                    siteConfig: {
+                        tag: readText('display-tag', '贺州文化博物馆 · AI 数字化特展'),
+                        mainTitle: readText('landing-main-title', '上古遗音'),
+                        subTitle: readText('landing-sub-title', '全息文物 AI 交互特展'),
+                        description: readText('landing-desc', ''),
+                        heroImage: persistAssetUrl(heroImageUrl),
+                        heroObjUrl: persistAssetUrl(heroObjUrl),
+                        heroMtlUrl: persistAssetUrl(heroMtlUrl),
+                        heroTextureUrl: persistAssetUrl(heroTextureUrl),
+                        heroModelFormat: heroModelFormat || detect3DModelFormat(heroObjUrl, ''),
+                        heroScale: heroVisualScale || 1,
+                        headerTitle: readText('header-main-title', '上古遗音'),
+                        footerText: readText('footer-copyright-text', '© 2026 贺州文化博物馆 - AI 交互特展智能系统')
+                    },
+                    audioConfig: { ...bgmConfig },
+                    categories: Array.from(window.appCategories || []),
+                    subCategories: Array.from(window.appSubCategories || []),
+                    masksData: masksData.map((mask) => ({ ...mask }))
+                };
+            }
+
+            function openCuratorDraftDatabase() {
+                if (!LOCAL_MAINTENANCE_MODE || !('indexedDB' in window)) return Promise.resolve(null);
+                if (curatorDraftDbPromise) return curatorDraftDbPromise;
+                curatorDraftDbPromise = new Promise((resolve, reject) => {
+                    const request = indexedDB.open(CURATOR_DRAFT_DB_NAME, 1);
+                    request.onupgradeneeded = () => {
+                        const db = request.result;
+                        if (!db.objectStoreNames.contains(CURATOR_DRAFT_STORE_NAME)) {
+                            db.createObjectStore(CURATOR_DRAFT_STORE_NAME, { keyPath: 'id' });
+                        }
+                    };
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error || new Error('无法打开馆长草稿存储'));
+                });
+                return curatorDraftDbPromise;
+            }
+
+            async function readCuratorDraft() {
+                try {
+                    const db = await openCuratorDraftDatabase();
+                    if (!db) return null;
+                    return await new Promise((resolve, reject) => {
+                        const transaction = db.transaction(CURATOR_DRAFT_STORE_NAME, 'readonly');
+                        const request = transaction.objectStore(CURATOR_DRAFT_STORE_NAME).get(CURATOR_DRAFT_RECORD_ID);
+                        request.onsuccess = () => resolve(request.result || null);
+                        request.onerror = () => reject(request.error || new Error('无法读取馆长草稿'));
+                    });
+                } catch (error) {
+                    console.warn('馆长草稿读取失败，本次将仅使用 data.json。', error);
+                    return null;
+                }
+            }
+
+            async function writeCuratorDraft(record) {
+                const db = await openCuratorDraftDatabase();
+                if (!db) return false;
+                await new Promise((resolve, reject) => {
+                    const transaction = db.transaction(CURATOR_DRAFT_STORE_NAME, 'readwrite');
+                    transaction.objectStore(CURATOR_DRAFT_STORE_NAME).put(record);
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = () => reject(transaction.error || new Error('无法保存馆长草稿'));
+                    transaction.onabort = () => reject(transaction.error || new Error('馆长草稿保存已取消'));
+                });
+                return true;
+            }
+
+            async function persistCuratorDraft({ force = false } = {}) {
+                if (!LOCAL_MAINTENANCE_MODE || !isAdminMode || !curatorSourceSignature) return;
+                const snapshot = collectCuratorDataSnapshot();
+                if (curatorBaselineCount > 0 && snapshot.masksData.length === 0) {
+                    if (!curatorDraftWarningShown) {
+                        curatorDraftWarningShown = true;
+                        showToast('检测到空馆藏，已阻止它覆盖本地馆长草稿。', 'error');
+                    }
+                    return;
+                }
+                const draftSignature = createCuratorDataSignature(snapshot);
+                if (!force && draftSignature === curatorLastDraftSignature) return;
+                try {
+                    await writeCuratorDraft({
+                        id: CURATOR_DRAFT_RECORD_ID,
+                        sourceSignature: curatorSourceSignature,
+                        draftSignature,
+                        savedAt: Date.now(),
+                        snapshot
+                    });
+                    curatorLastDraftSignature = draftSignature;
+                    curatorLastDraftSavedAt = Date.now();
+                    document.documentElement.dataset.curatorDraftSavedAt = String(curatorLastDraftSavedAt);
+                    updateCuratorDataStatus();
+                } catch (error) {
+                    console.warn('馆长草稿自动保存失败，请及时导出 data.json。', error);
+                }
+            }
+
+            function startCuratorDraftAutosave() {
+                if (!LOCAL_MAINTENANCE_MODE || curatorDraftAutosaveTimer) return;
+                curatorDraftAutosaveTimer = window.setInterval(() => {
+                    persistCuratorDraft();
+                }, 1200);
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) persistCuratorDraft({ force: true });
+                });
+            }
+
+            function applyExhibitionData(jsonData) {
+                if (jsonData.siteConfig) {
+                    if (jsonData.siteConfig.tag) document.getElementById('display-tag').innerText = jsonData.siteConfig.tag;
+                    if (jsonData.siteConfig.mainTitle) document.getElementById('landing-main-title').innerText = jsonData.siteConfig.mainTitle;
+                    if (jsonData.siteConfig.subTitle) document.getElementById('landing-sub-title').innerText = jsonData.siteConfig.subTitle;
+                    if (jsonData.siteConfig.description) document.getElementById('landing-desc').innerHTML = textToLineBreakHTML(jsonData.siteConfig.description);
+                    heroImageUrl = normalizeConfigImageUrl(jsonData.siteConfig.heroImage || '');
+                    heroObjUrl = normalizeConfigAssetUrl(jsonData.siteConfig.heroObjUrl || '');
+                    heroMtlUrl = normalizeConfigAssetUrl(jsonData.siteConfig.heroMtlUrl || '');
+                    heroTextureUrl = normalizeConfigImageUrl(jsonData.siteConfig.heroTextureUrl || '');
+                    heroModelFormat = detect3DModelFormat(heroObjUrl, jsonData.siteConfig.heroModelFormat || '');
+                    heroVisualScale = Math.min(1.5, Math.max(0.6, Number(jsonData.siteConfig.heroScale) || 1));
+                    if (jsonData.siteConfig.footerText) {
+                        document.getElementById('footer-copyright-text').innerText = jsonData.siteConfig.footerText;
+                        document.getElementById('landing-watermark').innerText = jsonData.siteConfig.footerText;
+                    }
+                    if (jsonData.siteConfig.headerTitle) document.getElementById('header-main-title').innerText = jsonData.siteConfig.headerTitle;
+                }
+
+                if (jsonData.audioConfig && typeof jsonData.audioConfig === 'object') {
+                    const importedVolume = Number(jsonData.audioConfig.volume);
+                    const importedPitch = Number(jsonData.audioConfig.proceduralPitch);
+                    bgmConfig.mode = jsonData.audioConfig.mode === 'custom' ? 'custom' : 'procedural';
+                    if (Number.isFinite(importedVolume)) bgmConfig.volume = Math.min(1, Math.max(0, importedVolume));
+                    if (Number.isFinite(importedPitch)) bgmConfig.proceduralPitch = Math.min(150, Math.max(30, importedPitch));
+                }
+
+                if (Array.isArray(jsonData.categories)) window.appCategories = Array.from(jsonData.categories);
+                if (Array.isArray(jsonData.subCategories)) window.appSubCategories = Array.from(jsonData.subCategories);
+                if (jsonData.masksData && Array.isArray(jsonData.masksData)) {
+                    masksData = jsonData.masksData;
+                    masksData.forEach((mask, index) => {
+                        if (!mask.id) mask.id = index;
+                        normalizeMaskRecordAssets(mask);
+                    });
+                }
+            }
+
+            async function loadExhibitionData() {
+                let restoredDraft = null;
+                try {
+                    const response = await fetch('./data.json', { cache: 'no-store' });
+                    if (!response.ok) throw new Error("Local data.json not found");
+                    const sourceData = await response.json();
+                    if (!Array.isArray(sourceData.masksData)) throw new Error("Invalid data.json structure");
+                    curatorSourceSignature = createCuratorDataSignature(sourceData);
+                    curatorBaselineCount = sourceData.masksData.length;
+                    curatorLastOfficialLoadAt = Date.now();
+                    curatorDataOrigin = 'data.json';
+
+                    let effectiveData = sourceData;
+                    if (LOCAL_MAINTENANCE_MODE) {
+                        const draft = await readCuratorDraft();
+                        const draftIsCompatible = draft
+                            && draft.sourceSignature === curatorSourceSignature
+                            && draft.snapshot
+                            && Array.isArray(draft.snapshot.masksData)
+                            && (draft.snapshot.masksData.length > 0 || curatorBaselineCount === 0);
+                        if (draftIsCompatible) {
+                            effectiveData = draft.snapshot;
+                            restoredDraft = draft;
+                            curatorDataOrigin = 'local-draft';
+                            curatorLastDraftSavedAt = Number(draft.savedAt) || 0;
+                        } else if (draft && draft.sourceSignature !== curatorSourceSignature) {
+                            console.info('data.json 已更新，旧馆长草稿不会覆盖新数据。');
                         }
                     }
-
-                    if (jsonData.masksData && Array.isArray(jsonData.masksData)) {
-                        masksData = jsonData.masksData;
-                        masksData.forEach((m, idx) => { 
-                            if(!m.id) m.id = idx; 
-                            normalizeMaskRecordAssets(m);
-                        });
-                    }
-
+                    applyExhibitionData(effectiveData);
+                    curatorLastDraftSignature = createCuratorDataSignature(collectCuratorDataSnapshot());
+                    startCuratorDraftAutosave();
                 } catch (e) {
-                    console.warn("未能加载外部 data.json，已自动切换为 18 件策展演示数据。", e);
-                    loadEmbeddedExhibitionData();
-                    showToast("未找到 data.json，已加载策展演示数据。", "info");
+                    console.warn("未能加载外部 data.json，正在尝试恢复馆长草稿。", e);
+                    if (LOCAL_MAINTENANCE_MODE) {
+                        const draft = await readCuratorDraft();
+                        if (draft && draft.snapshot && Array.isArray(draft.snapshot.masksData) && draft.snapshot.masksData.length > 0) {
+                            curatorSourceSignature = draft.sourceSignature || `recovered-${Date.now()}`;
+                            curatorBaselineCount = draft.snapshot.masksData.length;
+                            applyExhibitionData(draft.snapshot);
+                            curatorLastDraftSignature = createCuratorDataSignature(collectCuratorDataSnapshot());
+                            restoredDraft = draft;
+                            curatorDataOrigin = 'draft-recovery';
+                            curatorLastDraftSavedAt = Number(draft.savedAt) || 0;
+                            startCuratorDraftAutosave();
+                        }
+                    }
+                    if (!restoredDraft) {
+                        loadEmbeddedExhibitionData();
+                        curatorDataOrigin = 'embedded-demo';
+                        showToast("未找到 data.json，已临时加载演示数据；不会覆盖馆长草稿。", "error");
+                    }
+                }
+                updateCuratorDataStatus(curatorLastOfficialLoadAt ? `正式数据读取 ${formatCuratorDateTime(curatorLastOfficialLoadAt)}` : '未读取正式数据');
+                if (restoredDraft) {
+                    const savedTime = new Date(restoredDraft.savedAt || Date.now()).toLocaleString('zh-CN', { hour12: false });
+                    document.documentElement.dataset.curatorDraftSavedAt = String(restoredDraft.savedAt || Date.now());
+                    window.setTimeout(() => {
+                        showToast(`已恢复 ${restoredDraft.snapshot.masksData.length} 件藏品的本地馆长草稿（${savedTime}）。`, 'success');
+                    }, 350);
                 }
             }
 
@@ -7870,6 +8298,37 @@
                 statusEl.classList.add(tone === 'success' ? 'text-emerald-400' : tone === 'error' ? 'text-red-400' : 'text-stone-500');
             }
 
+            function setPostcardShareButtonState(state = 'loading') {
+                const button = document.getElementById('share-postcard-btn');
+                if (!button) return;
+                const states = {
+                    loading: '<i class="fa-solid fa-spinner fa-spin"></i> 链接生成中',
+                    ready: '<i class="fa-solid fa-arrow-up-from-bracket"></i> 分享纪念卡',
+                    unavailable: '<i class="fa-solid fa-cloud-slash"></i> 分享暂不可用'
+                };
+                button.innerHTML = states[state] || states.loading;
+                button.disabled = state !== 'ready';
+                button.setAttribute('aria-busy', state === 'loading' ? 'true' : 'false');
+                button.dataset.shareState = state;
+            }
+
+            async function copyPostcardShareUrl(shareUrl) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(shareUrl);
+                    return;
+                }
+                const input = document.createElement('textarea');
+                input.value = shareUrl;
+                input.setAttribute('readonly', '');
+                input.style.position = 'fixed';
+                input.style.opacity = '0';
+                document.body.appendChild(input);
+                input.select();
+                const copied = document.execCommand('copy');
+                input.remove();
+                if (!copied) throw new Error('浏览器不允许复制分享链接');
+            }
+
             function showPostcardQrLoading() {
                 const qrContainer = document.getElementById('postcard-qrcode');
                 qrContainer.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-stone-700 text-xl" aria-hidden="true"></i>';
@@ -8373,6 +8832,7 @@
                 if (descText.length > 70) descText = descText.substring(0, 70) + '...';
                 document.getElementById('postcard-desc').innerText = descText;
 
+                setPostcardShareButtonState('loading');
                 showPostcardQrLoading();
                 ensureQRCodeLoaded().catch((error) => console.warn('QRCode 预加载失败，云端链接生成后会重试。', error));
                 postcardModal.classList.remove('hidden');
@@ -8400,12 +8860,14 @@
                                     : '手机扫码打开横版电子明信片 · 链接有效期 7 天',
                             'success'
                         );
+                        setPostcardShareButtonState('ready');
                         showToast('横版电子明信片已生成，可使用手机扫码保存', 'success');
                         return shareResult.shareUrl;
                     })
                     .catch((error) => {
                         console.warn('电子明信片云端生成失败:', error);
                         if (generationId === postcardGenerationId) {
+                            setPostcardShareButtonState('unavailable');
                             showPostcardQrFailure();
                             showToast('云端明信片生成失败，仍可保存本地纪念卡', 'error');
                         }
@@ -8466,6 +8928,7 @@
                     document.getElementById('postcard-desc').innerText = currentMaskObj.description;
                     document.getElementById('postcard-qrcode').innerHTML = '';
                     setPostcardShareStatus('动态电子明信片 · 私密链接有效期 7 天', 'success');
+                    setPostcardShareButtonState('ready');
                     postcardModal.classList.remove('hidden');
                     setTimeout(() => {
                         postcardModal.classList.remove('opacity-0', 'scale-95');
@@ -8499,6 +8962,43 @@
                     startDetailRenderLoop();
                 }
                 resetActivity();
+            });
+
+            document.getElementById('share-postcard-btn').addEventListener('click', async () => {
+                soundSynth.playClick();
+                const button = document.getElementById('share-postcard-btn');
+                const shareUrl = currentPostcardShareUrl || document.getElementById('postcard-qrcode')?.dataset.shareUrl || '';
+                if (!shareUrl || button.dataset.shareState !== 'ready') {
+                    showToast('电子明信片链接仍在生成，请稍后再试', 'error');
+                    return;
+                }
+
+                const maskName = currentMaskObj?.name || '傩戏木雕面具';
+                const shareData = {
+                    title: `《上古遗音》${maskName}数字纪念卡`,
+                    text: `我在《上古遗音》数字特展中生成了一张 ${maskName} 电子纪念卡，链接有效期 7 天。`,
+                    url: shareUrl
+                };
+
+                try {
+                    if (typeof navigator.share === 'function') {
+                        await navigator.share(shareData);
+                        showToast('电子纪念卡已分享', 'success');
+                    } else {
+                        await copyPostcardShareUrl(shareUrl);
+                        showToast('分享链接已复制，可发送给好友', 'success');
+                    }
+                } catch (error) {
+                    if (error?.name === 'AbortError') return;
+                    console.warn('系统分享失败，尝试复制链接。', error);
+                    try {
+                        await copyPostcardShareUrl(shareUrl);
+                        showToast('分享链接已复制，可发送给好友', 'success');
+                    } catch (copyError) {
+                        console.error('电子明信片分享失败:', copyError);
+                        showToast('分享失败，请使用二维码或保存纪念卡', 'error');
+                    }
+                }
             });
 
             // ✨ 高清 Canvas 合成引擎
@@ -8903,6 +9403,7 @@
                     ? "本地馆长模式已开启，修改后请导出 data.json。"
                     : "已切换为本地游客预览。", "info");
                 updateAdminUI();
+                if (isAdminMode) persistCuratorDraft({ force: true });
             });
             document.getElementById('cancel-auth-btn').addEventListener('click', () => { soundSynth.playClick(); authModal.classList.add('hidden'); });
             document.getElementById('confirm-auth-btn').addEventListener('click', () => {
@@ -8922,6 +9423,7 @@
             document.getElementById('open-config-btn').addEventListener('click', () => {
                 soundSynth.playClick();
                 if (!canUseLocalAdminTools('展厅配置')) return;
+                updateCuratorDataStatus();
                 document.getElementById('cfg-landing-tag').value = document.getElementById('landing-museum-tag').innerText.trim();
                 document.getElementById('cfg-landing-title').value = document.getElementById('landing-main-title').innerText.trim();
                 document.getElementById('cfg-landing-sub').value = document.getElementById('landing-sub-title').innerText.trim();
@@ -9149,6 +9651,73 @@
             });
             document.getElementById('close-config-btn').addEventListener('click', () => configModal.classList.add('hidden')); document.getElementById('cancel-config-btn').addEventListener('click', () => configModal.classList.add('hidden'));
 
+            document.getElementById('backup-json-btn').addEventListener('click', () => {
+                soundSynth.playClick();
+                if (!canUseLocalAdminTools('下载数据备份')) return;
+                downloadCurrentCuratorBackup('manual');
+                showToast(`已下载 ${masksData.length} 件藏品的数据备份。`, 'success');
+            });
+
+            const importJsonFileInput = document.getElementById('import-json-file');
+            document.getElementById('import-json-btn').addEventListener('click', () => {
+                soundSynth.playClick();
+                if (!canUseLocalAdminTools('导入 data.json')) return;
+                importJsonFileInput.click();
+            });
+            importJsonFileInput.addEventListener('change', async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                try {
+                    const importedData = validateCuratorDataPackage(JSON.parse(await file.text()));
+                    if (importedData.masksData.length === 0 && masksData.length > 0) {
+                        throw new Error('导入文件没有藏品，已阻止覆盖当前数据。');
+                    }
+                    const confirmed = confirm(`即将把当前 ${masksData.length} 件数据切换为“${file.name}”中的 ${importedData.masksData.length} 件。\n\n系统会先自动下载当前数据备份。是否继续？`);
+                    if (!confirmed) return;
+                    downloadCurrentCuratorBackup('before-import');
+                    await applyCuratorDataPackage(importedData, 'imported-json');
+                    showToast(`已导入 ${importedData.masksData.length} 件藏品，并自动保存为本地馆长草稿。`, 'success');
+                } catch (error) {
+                    console.error('data.json 导入失败', error);
+                    showToast(`导入失败：${error.message || '文件格式无效'}`, 'error');
+                } finally {
+                    event.target.value = '';
+                }
+            });
+
+            document.getElementById('sync-online-json-btn').addEventListener('click', async () => {
+                soundSynth.playClick();
+                if (!canUseLocalAdminTools('同步线上正式数据')) return;
+                const button = document.getElementById('sync-online-json-btn');
+                const originalHtml = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 检查线上数据';
+                try {
+                    const response = await fetch(`${PUBLIC_DATA_URL}?t=${Date.now()}`, { cache: 'no-store' });
+                    if (!response.ok) throw new Error(`线上返回 HTTP ${response.status}`);
+                    const onlineData = validateCuratorDataPackage(await response.json());
+                    const currentSignature = createCuratorContentSignature(buildCuratorDataPackage({ preferConfigInputs: false }).data);
+                    const onlineSignature = createCuratorContentSignature(onlineData);
+                    if (currentSignature === onlineSignature) {
+                        curatorDataOrigin = 'online-sync';
+                        updateCuratorDataStatus('已与线上馆藏一致');
+                        showToast(`线上与本地馆藏一致，均为 ${onlineData.masksData.length} 件。`, 'success');
+                        return;
+                    }
+                    const confirmed = confirm(`线上正式数据为 ${onlineData.masksData.length} 件，当前本地为 ${masksData.length} 件。\n\n系统会先自动下载当前备份，再把线上数据载入馆长模式。是否继续？`);
+                    if (!confirmed) return;
+                    downloadCurrentCuratorBackup('before-online-sync');
+                    await applyCuratorDataPackage(onlineData, 'online-sync');
+                    showToast(`已同步线上 ${onlineData.masksData.length} 件藏品。修改后请导出正式 data.json 发布。`, 'success');
+                } catch (error) {
+                    console.error('线上 data.json 同步失败', error);
+                    showToast(`线上同步失败：${error.message || '请检查网络与 GitHub Pages'}`, 'error');
+                } finally {
+                    button.disabled = false;
+                    button.innerHTML = originalHtml;
+                }
+            });
+
             document.getElementById('save-config-btn').addEventListener('click', () => {
                 soundSynth.playClick();
                 if (!canUseLocalAdminTools('展厅配置')) return;
@@ -9174,6 +9743,7 @@
                 if(bgmConfig.mode === 'procedural') { proceduralBGM.setMasterVolume(bgmConfig.volume); proceduralBGM.setPitch(bgmConfig.proceduralPitch); } else customAudioPlayer.volume = bgmConfig.volume;
                 if(wasPlaying) setTimeout(() => { playGlobalMusic(); }, 100);
                 configModal.classList.add('hidden');
+                persistCuratorDraft({ force: true });
                 showToast(landingVisible ? "配置已应用，首页 3D 正在刷新。" : "配置已应用，点击“重演主页”查看首页 3D。", "success");
             });
 
@@ -9195,7 +9765,8 @@
                     ['AI 数字馆长', !!document.getElementById('ai-story-btn') && !!document.getElementById('ai-chat-send')],
                     ['AR 试戴', !!document.getElementById('ar-view') && !!document.getElementById('ar-shutter-btn')],
                     ['留影明信片', !!document.getElementById('postcard-modal') && !!document.getElementById('download-postcard-btn')],
-                    ['馆长配置', !!document.getElementById('save-config-btn') && !!document.getElementById('export-json-btn')]
+                    ['馆长配置', !!document.getElementById('save-config-btn') && !!document.getElementById('export-json-btn')],
+                    ['数据闭环', !!document.getElementById('backup-json-btn') && !!document.getElementById('import-json-btn') && !!document.getElementById('sync-online-json-btn') && curatorBaselineCount >= 0]
                 ];
                 const failed = checks.filter(([, ok]) => !ok);
                 console.table(checks.map(([name, ok]) => ({ module: name, status: ok ? 'OK' : 'FAIL' })));
@@ -9288,47 +9859,16 @@
             document.getElementById('export-json-btn').addEventListener('click', () => {
                 soundSynth.playClick();
                 if (!canUseLocalAdminTools('导出配置')) return;
-                const persistAssetUrl = (value) => String(value || '').startsWith('blob:') ? '' : (value || '');
                 const hasLocalHeroBlob = [heroObjUrl, heroMtlUrl, heroTextureUrl].some(url => String(url || '').startsWith('blob:'));
                 if (hasLocalHeroBlob) {
                     showToast("本地上传的首页 3D 仅适合预览，已从导出文件中移除；请填写 models/ 持久路径。", "info");
                 }
-                let removedTransientAssets = 0;
-                const persistentMasksData = masksData.map((mask) => {
-                    const record = { ...mask };
-                    ['image', 'thumbnail', 'modelUrl', 'objUrl', 'mtlUrl', 'textureUrl'].forEach((field) => {
-                        if (String(record[field] || '').startsWith('blob:')) {
-                            record[field] = '';
-                            removedTransientAssets++;
-                        }
-                    });
-                    return record;
-                });
-                const exportData = {
-                    siteConfig: {
-                        tag: document.getElementById('cfg-landing-tag').value || "贺州文化博物馆 · AI 数字化特展",
-                        mainTitle: document.getElementById('cfg-landing-title').value || "上古遗音",
-                        subTitle: document.getElementById('cfg-landing-sub').value || "全息文物 AI 交互特展",
-                        description: document.getElementById('cfg-landing-desc').value || "",
-                        heroImage: heroImageUrl || "",
-                        heroObjUrl: persistAssetUrl(heroObjUrl),
-                        heroMtlUrl: persistAssetUrl(heroMtlUrl),
-                        heroTextureUrl: persistAssetUrl(heroTextureUrl),
-                        heroModelFormat: heroModelFormat || detect3DModelFormat(heroObjUrl, ""),
-                        heroScale: heroVisualScale || 1,
-                        footerText: document.getElementById('cfg-footer-text').value || "© 2026 贺州文化博物馆 - AI 交互特展智能系统"
-                    },
-                    masksData: persistentMasksData
-                };
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-                const downloadAnchorNode = document.createElement('a');
-                downloadAnchorNode.setAttribute("href", dataStr);
-                downloadAnchorNode.setAttribute("download", "data.json");
-                document.body.appendChild(downloadAnchorNode); 
-                downloadAnchorNode.click();
-                downloadAnchorNode.remove();
+                const { data: exportData, removedTransientAssets } = buildCuratorDataPackage({ preferConfigInputs: true, exportSource: 'local-curator-release' });
+                downloadCuratorJson(exportData, 'data.json');
+                persistCuratorDraft({ force: true });
                 if (removedTransientAssets) showToast(`导出时移除了 ${removedTransientAssets} 个临时资源地址，请在 GitHub 中补充对应 models/ 或 images/ 路径。`, "info");
-                showToast("✅ 已打包您的最新分类与数据！请去 GitHub 覆盖上传此 data.json", "success");
+                updateCuratorDataStatus('已导出，等待覆盖 GitHub data.json');
+                showToast(`已导出含 ${exportData.masksData.length} 件藏品的正式 data.json，请覆盖上传到 GitHub。`, "success");
             });
 
             document.getElementById('enter-exhibition-btn').addEventListener('click', () => {

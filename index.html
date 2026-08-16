@@ -138,6 +138,26 @@
             word-break: break-all;
         }
 
+        #mobile-copy-status {
+            min-height: 20px;
+            color: rgba(185, 167, 124, 0.9);
+            font-size: 11px;
+            line-height: 1.7;
+            text-align: center;
+        }
+
+        #mobile-copy-status.is-success {
+            color: #6ee7b7;
+        }
+
+        #mobile-copy-status.is-manual {
+            color: #f0c978;
+        }
+
+        #toast-container {
+            z-index: 10002 !important;
+        }
+
         button, input, select, textarea, .interactive-element {
             touch-action: manipulation;
         }
@@ -5113,6 +5133,7 @@
             <button id="copy-mobile-share-btn" type="button" class="mobile-postcard-secondary-action">
                 <i class="fa-solid fa-link"></i> 复制明信片链接
             </button>
+            <p id="mobile-copy-status" role="status" aria-live="polite">点击后可直接粘贴到微信、QQ 或短信</p>
             <p class="text-[10px] text-stone-500 leading-5">微信内置浏览器不提供网页直接唤起“发送给朋友”的标准接口，因此使用独立明信片页面分享最稳定。</p>
         </div>
     </div>
@@ -8475,21 +8496,44 @@
                 button.dataset.shareState = state;
             }
 
-            async function copyPostcardShareUrl(shareUrl) {
-                if (navigator.clipboard && window.isSecureContext) {
-                    await navigator.clipboard.writeText(shareUrl);
-                    return;
-                }
+            function tryLegacyPostcardCopy(shareUrl) {
                 const input = document.createElement('textarea');
                 input.value = shareUrl;
-                input.setAttribute('readonly', '');
                 input.style.position = 'fixed';
-                input.style.opacity = '0';
+                input.style.left = '-9999px';
+                input.style.top = '0';
+                input.style.fontSize = '16px';
+                input.style.opacity = '0.01';
                 document.body.appendChild(input);
+                input.focus({ preventScroll: true });
                 input.select();
-                const copied = document.execCommand('copy');
-                input.remove();
-                if (!copied) throw new Error('浏览器不允许复制分享链接');
+                input.setSelectionRange(0, input.value.length);
+                let copied = false;
+                const handleCopy = (event) => {
+                    if (!event.clipboardData) return;
+                    event.clipboardData.setData('text/plain', shareUrl);
+                    event.preventDefault();
+                    copied = true;
+                };
+                document.addEventListener('copy', handleCopy, { once: true });
+                try {
+                    copied = document.execCommand('copy') || copied;
+                } catch (_) {
+                    copied = false;
+                } finally {
+                    document.removeEventListener('copy', handleCopy);
+                    input.remove();
+                }
+                return copied;
+            }
+
+            async function copyPostcardShareUrl(shareUrl) {
+                if (tryLegacyPostcardCopy(shareUrl)) return true;
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(shareUrl);
+                    return true;
+                }
+                throw new Error('浏览器不允许自动复制分享链接');
             }
 
             function showPostcardQrLoading() {
@@ -9178,14 +9222,24 @@
             function closeMobileShareOverlay() {
                 pendingMobileShareUrl = '';
                 document.getElementById('mobile-share-overlay').classList.add('hidden');
-                document.getElementById('mobile-share-link').value = '';
+                const field = document.getElementById('mobile-share-link');
+                field.value = '';
+                field.setAttribute('readonly', '');
                 document.getElementById('open-mobile-share-page-btn').setAttribute('href', '#');
+                const copyButton = document.getElementById('copy-mobile-share-btn');
+                copyButton.disabled = false;
+                copyButton.innerHTML = '<i class="fa-solid fa-link"></i> 复制明信片链接';
+                const copyStatus = document.getElementById('mobile-copy-status');
+                copyStatus.className = '';
+                copyStatus.innerText = '点击后可直接粘贴到微信、QQ 或短信';
             }
 
             function showMobileShareOverlay(shareUrl) {
                 closeMobileSaveOverlay();
                 pendingMobileShareUrl = shareUrl;
-                document.getElementById('mobile-share-link').value = shareUrl;
+                const field = document.getElementById('mobile-share-link');
+                field.value = shareUrl;
+                field.setAttribute('readonly', '');
                 document.getElementById('open-mobile-share-page-btn').href = shareUrl;
                 document.getElementById('mobile-share-guide').innerText = isWechatBrowser()
                     ? '先打开独立明信片，再点击微信右上角“…”并选择“发送给朋友”。'
@@ -9196,15 +9250,27 @@
             document.getElementById('close-mobile-share-btn').addEventListener('click', closeMobileShareOverlay);
             document.getElementById('copy-mobile-share-btn').addEventListener('click', async () => {
                 if (!pendingMobileShareUrl) return;
+                const button = document.getElementById('copy-mobile-share-btn');
+                const status = document.getElementById('mobile-copy-status');
+                button.disabled = true;
+                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 正在复制';
                 try {
                     await copyPostcardShareUrl(pendingMobileShareUrl);
+                    button.innerHTML = '<i class="fa-solid fa-check"></i> 已复制链接';
+                    status.className = 'is-success';
+                    status.innerText = '复制成功，现在可以直接粘贴发送给好友';
                     showToast('明信片链接已复制，可粘贴发送给好友', 'success');
                 } catch (error) {
                     const field = document.getElementById('mobile-share-link');
-                    field.focus();
+                    field.focus({ preventScroll: true });
                     field.select();
                     field.setSelectionRange(0, field.value.length);
-                    showToast('请长按已选中的链接并复制', 'info');
+                    button.innerHTML = '<i class="fa-solid fa-i-cursor"></i> 链接已全选';
+                    status.className = 'is-manual';
+                    status.innerText = '微信未授权自动复制，请长按上方已选中的链接并选择“复制”';
+                    showToast('链接已全选，请长按并选择复制', 'info');
+                } finally {
+                    button.disabled = false;
                 }
             });
 
